@@ -1,0 +1,16 @@
+C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\CF.cpp;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Build\CF.obj
+C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\ESP\ESPManager.cpp;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Build\ESPManager.obj
+C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory\InputManager.cpp;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Build\InputManager.obj
+C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory\Memory.cpp;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Build\Memory.obj
+C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory\Registry.cpp;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Build\Registry.obj
+C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory\Shellcode.cpp;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Build\Shellcode.obj
+C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Triggerbot\Triggerbot.cpp;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Build\Triggerbot.obj
+C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\UI\FTXUI.cpp;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Build\FTXUI.obj
+C:\Users\askmo\source\repos\CrossfireManager\src\imgui\imgui.cpp;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Build\imgui.obj
+C:\Users\askmo\source\repos\CrossfireManager\src\imgui\imgui_demo.cpp;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Build\imgui_demo.obj
+C:\Users\askmo\source\repos\CrossfireManager\src\imgui\imgui_draw.cpp;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Build\imgui_draw.obj
+C:\Users\askmo\source\repos\CrossfireManager\src\imgui\imgui_impl_dx11.cpp;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Build\imgui_impl_dx11.obj
+C:\Users\askmo\source\repos\CrossfireManager\src\imgui\imgui_impl_win32.cpp;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Build\imgui_impl_win32.obj
+C:\Users\askmo\source\repos\CrossfireManager\src\imgui\imgui_tables.cpp;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Build\imgui_tables.obj
+C:\Users\askmo\source\repos\CrossfireManager\src\imgui\imgui_widgets.cpp;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Build\imgui_widgets.obj
+C:\Users\askmo\source\repos\CrossfireManager\src\window.cpp;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Build\window.obj

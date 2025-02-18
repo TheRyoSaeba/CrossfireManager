@@ -1,0 +1,22 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "CrossfireManager\\Build\\Overlay.h.obj",
+            "outputs": [
+                "C:\\Users\\askmo\\source\\repos\\CrossfireManager\\CrossfireManager\\Build\\vc143.pdb",
+                "CrossfireManager\\Build\\",
+                "C:\\Users\\askmo\\source\\repos\\CrossfireManager\\CrossfireManager\\Build\\Overlay.h.ifc"
+            ],
+            "provides": [
+                {
+                    "logical-name": "CrossfireManager\\Overlay.h",
+                    "source-path": "c:\\users\\askmo\\source\\repos\\crossfiremanager\\crossfiremanager\\overlay.h",
+                    "lookup-method": "absolute"
+                }
+            ],
+            "requires": []
+        }
+    ]
+}

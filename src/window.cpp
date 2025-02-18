@@ -104,7 +104,7 @@ void window::render_frame() {
 
             int adjustedX = rect.x - 6;
             int adjustedY = rect.y - 2;
-            int adjustedW = rect.w + 2;
+            int adjustedW = rect.w + 1;
             int adjustedH = rect.h + 1;
 
             drawList->AddRect(

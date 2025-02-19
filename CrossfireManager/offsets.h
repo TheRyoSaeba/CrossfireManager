@@ -44,7 +44,7 @@ ________:00000001400195B0                 lea     rdx, off_140FB6110   + 0x2c70
     inline uintptr_t MYOFFSET = 0 ;
     inline uintptr_t dwCPlayerStart = 0x298;
     inline uintptr_t dwCPlayerSize = 0 ;
-    inline uintptr_t ILTDrawPrim = 0;
+    inline uintptr_t ILTDrawPrim = 0x140FB6110;
     inline bool ESPDRAWBOX;
 }  
  

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <windows.h>
 #include "window.h"
 #include "ESPManager.hpp"
@@ -44,6 +44,7 @@ void window::render_frame() {
 
      
     if (ESPDRAWBOX) {
+        if(!ESPManager::GetInstance().IsESPActive())
         ESPManager::GetInstance().StartESP(mem);
 
         ImGui::Begin("MakimuraDMA", nullptr,
@@ -52,55 +53,19 @@ void window::render_frame() {
             ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground);
 
         window::outlined_text(ImVec2(50, 50), IM_COL32(255, 0, 0, 255), "ESP Overlay ON");
+        ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
+
         ImGui::End();
 
         std::vector<RectData> rectsCopy;
         {
             std::lock_guard<std::mutex> lock(g_espMutex);
-            if (!g_espRects.empty()) {
-                rectsCopy = g_espRects;
-
-                g_espRects.clear();
-            }
-            else {
-
-                rectsCopy = cachedRects;
-            }
+            rectsCopy = g_espRects;
         }
-
-        std::vector<RectData> smoothedRects;
-        float alpha = 0.1f;
-        for (const auto& newRect : rectsCopy)
-        {
-            RectData smoothRect;
-            bool found = false;
-            for (const auto& prevRect : cachedRects)
-            {
-                if (prevRect.playerName == newRect.playerName)
-                {
-                    smoothRect.x = static_cast<int>(prevRect.x * (1 - alpha) + newRect.x * alpha);
-                    smoothRect.y = static_cast<int>(prevRect.y * (1 - alpha) + newRect.y * alpha);
-                    smoothRect.w = static_cast<int>(prevRect.w * (1 - alpha) + newRect.w * alpha);
-                    smoothRect.h = static_cast<int>(prevRect.h * (1 - alpha) + newRect.h * alpha);
-                    smoothRect.color = newRect.color;
-                    smoothRect.playerName = newRect.playerName;
-                    smoothRect.currentHP = newRect.currentHP;
-                    smoothRect.maxHP = newRect.maxHP;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                smoothRect = newRect;
-            }
-            smoothedRects.push_back(smoothRect);
-        }
-
-        cachedRects = smoothedRects;
 
         auto drawList = ImGui::GetForegroundDrawList();
-        for (const auto& rect : smoothedRects)
-        {
+
+        for (const auto& rect : rectsCopy) {
 
             int adjustedX = rect.x - 5;
             int adjustedY = rect.y - 1;
@@ -108,17 +73,17 @@ void window::render_frame() {
             int adjustedH = rect.h + 1;
 
             drawList->AddRect(
+
                 ImVec2(static_cast<float>(adjustedX), static_cast<float>(adjustedY)),
                 ImVec2(static_cast<float>(adjustedX + adjustedW), static_cast<float>(adjustedY + adjustedH)),
                 IM_COL32(rect.color.R, rect.color.G, rect.color.B, rect.color.A),
-                0.0f, ImDrawFlags_Closed, 1.5f
+                0.0f, ImDrawFlags_Closed, 1.8f
             );
+
             ImVec2 textSize = ImGui::CalcTextSize(rect.playerName.c_str());
             float nameX = rect.x + (rect.w - textSize.x) * 0.5f;
             float nameY = rect.y - textSize.y - 2.0f;
-            drawList->AddText(ImVec2(nameX, nameY), IM_COL32(255, 255, 255, 255), rect.playerName.c_str());
-
-            int hp = std::max(0, rect.currentHP);
+            drawList->AddText(ImVec2(nameX, nameY), IM_COL32(255, 255, 255, 255), rect.playerName.c_str());int hp = std::max(0, rect.currentHP);
             float healthPercent = static_cast<float>(hp) / static_cast<float>(rect.maxHP);
             float barWidth = 4.0f;
             float barHeight = rect.h * healthPercent;
@@ -142,6 +107,7 @@ void window::render_frame() {
             cachedRects.clear();
         }
     }
+
     
 
 

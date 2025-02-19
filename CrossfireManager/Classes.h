@@ -499,6 +499,14 @@ namespace KLASSES {
         }
         return false;
     }
+inline bool EngineW2S(const LT_DRAWPRIM& drawPrim, D3DXVECTOR3* InOut) {
+    D3DXVECTOR3 vScreen;
+    D3DXVECTOR3 worldPos = *InOut;
+    D3DXMATRIX world = D3DXMATRIX(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+    D3DXVec3Project(&vScreen, &worldPos, &drawPrim.viewport, &drawPrim.projection, &drawPrim.view, &world);
+    if (vScreen.z <= 1.0f) { *InOut = vScreen; return true; }
+    return false;
+}
 
 
     inline bool EngineW2S(const LT_DRAWPRIM& drawPrim, D3DXVECTOR3* InOut) {

@@ -1,24 +1,27 @@
- 
-#include "Memory.h"
 #include "pch.h"
+#include "Memory.h"
+
 #include <thread>
 #include <iostream>
 
 Memory::Memory()
 {
-	 
+	LOG("loading libraries...\n");
 	modules.VMM = LoadLibraryA("vmm.dll");
 	modules.FTD3XX = LoadLibraryA("FTD3XX.dll");
 	modules.LEECHCORE = LoadLibraryA("leechcore.dll");
 
 	if (!modules.VMM || !modules.FTD3XX || !modules.LEECHCORE)
 	{
-		 
+		LOG("vmm: %p\n", modules.VMM);
+		LOG("ftd: %p\n", modules.FTD3XX);
+		LOG("leech: %p\n", modules.LEECHCORE);
+		THROW("[!] Could not load a library\n");
 	}
 
 	this->key = std::make_shared<c_keys>();
 
-	 
+	LOG("Successfully loaded libraries!\n");
 }
 
 Memory::~Memory()
@@ -98,7 +101,10 @@ bool Memory::SetFPGA()
 		LOG("[!] Failed to lookup FPGA device, Attempting to proceed\n\n");
 		return false;
 	}
- 
+
+	LOG("[+] VMMDLL_ConfigGet");
+	LOG(" ID = %lli", qwID);
+	LOG(" VERSION = %lli.%lli\n", qwVersionMajor, qwVersionMinor);
 
 	if ((qwVersionMajor >= 4) && ((qwVersionMajor >= 5) || (qwVersionMinor >= 7)))
 	{
@@ -123,7 +129,7 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 {
 	if (!DMA_INITIALIZED)
 	{
-		 
+		LOG("inizializing...\n");
 	reinit:
 		LPCSTR args[] = {const_cast<LPCSTR>(""), const_cast<LPCSTR>("-device"), const_cast<LPCSTR>("fpga://algo=0"), const_cast<LPCSTR>(""), const_cast<LPCSTR>(""), const_cast<LPCSTR>(""), const_cast<LPCSTR>("")};
 		DWORD argc = 3;
@@ -143,15 +149,15 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 				dumped = this->DumpMemoryMap(debug);
 			else
 				dumped = true;
-			 
+			LOG("dumping memory map to file...\n");
 			if (!dumped)
 			{
-				 
-				 
+				LOG("[!] ERROR: Could not dump memory map!\n");
+				LOG("Defaulting to no memory map!\n");
 			}
 			else
 			{
-			 
+				LOG("Dumped memory map!\n");
 
 				//Add the memory map to the arguments and increase arg count.
 				args[argc++] = const_cast<LPSTR>("-memmap");
@@ -164,10 +170,10 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 			if (memMap)
 			{
 				memMap = false;
-				 
+				LOG("[!] Initialization failed with Memory map? Try without MMap\n");
 				goto reinit;
 			}
-			 
+			LOG("[!] Initialization failed! Is the DMA in use or disconnected?\n");
 			return false;
 		}
 
@@ -176,11 +182,13 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 		VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_FPGA_ID, &FPGA_ID);
 		VMMDLL_ConfigGet(this->vHandle, LC_OPT_FPGA_DEVICE_ID, &DEVICE_ID);
 
-		 
+		LOG("FPGA ID: %llu\n", FPGA_ID);
+		LOG("DEVICE ID: %llu\n", DEVICE_ID);
+		LOG("success!\n");
 
 		if (!this->SetFPGA())
 		{
-			 
+			LOG("[!] Could not set FPGA!\n");
 			VMMDLL_Close(this->vHandle);
 			return false;
 		}
@@ -188,37 +196,44 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 		DMA_INITIALIZED = TRUE;
 	}
 	else
-		 
+		LOG("DMA already initialized!\n");
 
 	if (PROCESS_INITIALIZED)
 	{
-		 
+		LOG("Process already initialized!\n");
 		return true;
 	}
 
 	current_process.PID = GetPidFromName(process_name);
 	if (!current_process.PID)
 	{
-	 
+		LOG("[!] Could not get PID from name!\n");
 		return false;
 	}
 	current_process.process_name = process_name;
-	 
+	if (!mem.FixCr3())
+		std::cout << "Failed to fix CR3" << std::endl;
+	else
+		std::cout << "CR3 fixed" << std::endl;
+
 	current_process.base_address = GetBaseDaddy(process_name);
 	if (!current_process.base_address)
 	{
-	 
+		LOG("[!] Could not get base address!\n");
 		return false;
 	}
 
 	current_process.base_size = GetBaseSize(process_name);
 	if (!current_process.base_size)
 	{
-		 
+		LOG("[!] Could not get base size!\n");
 		return false;
 	}
 
-	 
+	LOG("Process information of %s\n", process_name.c_str());
+	LOG("PID: %i\n", current_process.PID);
+	LOG("Base Address: 0x%llx\n", current_process.base_address);
+	LOG("Base Size: 0x%llx\n", current_process.base_size);
 
 	PROCESS_INITIALIZED = TRUE;
 
@@ -303,18 +318,6 @@ PEB Memory::GetProcessPeb()
 	return { };
 }
 
-uintptr_t Memory::GetProcessPebAddress()
-{
-	auto info = GetProcessInformation();
-	if (info.win.vaPEB)
-	{
-		LOG("[+] Found process PEB ptr at 0x%p\n", info.win.vaPEB);
-		return info.win.vaPEB;
-	}
-	LOG("[!] Failed to find the processes PEB\n");
-	return { };
-}
-
 size_t Memory::GetBaseDaddy(std::string module_name)
 {
 	std::wstring str(module_name.begin(), module_name.end());
@@ -326,7 +329,7 @@ size_t Memory::GetBaseDaddy(std::string module_name)
 		return 0;
 	}
 
- 
+	LOG("[+] Found Base Address for %s at 0x%p\n", module_name.c_str(), module_info->vaBase);
 	return module_info->vaBase;
 }
 
@@ -338,7 +341,7 @@ size_t Memory::GetBaseSize(std::string module_name)
 	auto bResult = VMMDLL_Map_GetModuleFromNameW(this->vHandle, current_process.PID, const_cast<LPWSTR>(str.c_str()), &module_info, VMMDLL_MODULE_FLAG_NORMAL);
 	if (bResult)
 	{
-		 
+		LOG("[+] Found Base Size for %s at 0x%p\n", module_name.c_str(), module_info->cbImageSize);
 		return module_info->cbImageSize;
 	}
 	return 0;
@@ -688,7 +691,7 @@ bool Memory::Write(uintptr_t address, void* buffer, size_t size) const
 {
 	if (!VMMDLL_MemWrite(this->vHandle, current_process.PID, address, static_cast<PBYTE>(buffer), size))
 	{
-		 
+		LOG("[!] Failed to write Memory at 0x%p\n", address);
 		return false;
 	}
 	return true;
@@ -698,7 +701,7 @@ bool Memory::Write(uintptr_t address, void* buffer, size_t size, int pid) const
 {
 	if (!VMMDLL_MemWrite(this->vHandle, pid, address, static_cast<PBYTE>(buffer), size))
 	{
-	 
+		LOG("[!] Failed to write Memory at 0x%p\n", address);
 		return false;
 	}
 	return true;
@@ -709,7 +712,7 @@ bool Memory::Read(uintptr_t address, void* buffer, size_t size) const
 	DWORD read_size = 0;
 	if (!VMMDLL_MemReadEx(this->vHandle, current_process.PID, address, static_cast<PBYTE>(buffer), size, &read_size, VMMDLL_FLAG_NOCACHE))
 	{
-	 
+		LOG("[!] Failed to read Memory at 0x%p\n", address);
 		return false;
 	}
 
@@ -721,7 +724,7 @@ bool Memory::Read(uintptr_t address, void* buffer, size_t size, int pid) const
 	DWORD read_size = 0;
 	if (!VMMDLL_MemReadEx(this->vHandle, pid, address, static_cast<PBYTE>(buffer), size, &read_size, VMMDLL_FLAG_NOCACHE))
 	{
-	 
+		LOG("[!] Failed to read Memory at 0x%p\n", address);
 		return false;
 	}
 	return (read_size == size);

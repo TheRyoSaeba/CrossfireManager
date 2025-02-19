@@ -190,6 +190,14 @@ namespace KLASSES {
     };
 
 
+    class LT_DRAWPRIM {
+    public:
+        char pad_0000[11376]; // 0x0000
+        D3DXMATRIX view;       // 0x2C70
+        D3DXMATRIX projection; // 0x2CB0
+        D3DVIEWPORT9 viewport; // 0x2CF0
+    };
+
 
     class pObject
     {
@@ -492,156 +500,24 @@ namespace KLASSES {
         return false;
     }
 
-    class CLTModelServer {
-    public:
-        using GetNodeTransformFn = uint32_t(__stdcall*)(uintptr_t thisPtr,
-            obj* hObject, uint32_t Bone,
-            Transform* Trans,
-            bool WorldSpace);
 
-    private:
-        uintptr_t vTable = 0;
-        GetNodeTransformFn aGetNodeTransform = nullptr;
-        Memory& mem;  // Reference to DMA Memory reader
+    inline bool EngineW2S(const LT_DRAWPRIM& drawPrim, D3DXVECTOR3* InOut) {
+        D3DXVECTOR3 vScreen;
+        D3DXVECTOR3 worldPos = *InOut;
+        D3DXMATRIX world = D3DXMATRIX(
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f);
 
-    public:
-        explicit CLTModelServer(Memory& memory) : mem(memory) {
-            vTable = CFBASE + 0X4695B8;  // ✅ Make sure this is correct
-            if (vTable) {
-                aGetNodeTransform = GetVFuncDMA<GetNodeTransformFn>(
-                    vTable, 62, mem);  // ✅ Uses correct VTable index
-            }
+        D3DXVec3Project(&vScreen, &worldPos, &drawPrim.viewport, &drawPrim.projection, &drawPrim.view, &world);
+        if (vScreen.z <= 1.0f) {
+            *InOut = vScreen;
+            return true;
         }
-
-        bool IsValid() const { return vTable != 0 && aGetNodeTransform != nullptr; }
-
-        bool SafeGetNodeTransform(uintptr_t CLTModelServerPtr, obj* playerModel,
-            uint32_t Bone, Transform* OutTrans) {
-            if (!CLTModelServerPtr) {
-                Utils::DebugLog(
-                    "❌ CLTModelServerPtr is NULL! Cannot execute GetNodeTransform.");
-                return false;
-            }
-
-            if (!aGetNodeTransform) {
-                Utils::DebugLog("❌ aGetNodeTransform function pointer is NULL!");
-                return false;
-            }
-
-            if (!playerModel) {
-                Utils::DebugLog("❌ playerModel is NULL! Cannot get node transform.");
-                return false;
-            }
-
-            return aGetNodeTransform(CLTModelServerPtr, playerModel, Bone, OutTrans,
-                true);
-        }
-
-        void GetNodePosition(obj* playerModel, uint32_t Bone, D3DXVECTOR3& Out) {
-            if (!playerModel) {
-                Utils::DebugLog("❌ GetNodePosition failed! playerModel is NULL.");
-                return;
-            }
-
-            if (!aGetNodeTransform) {
-                Utils::DebugLog("❌ aGetNodeTransform is NULL! Cannot execute function.");
-                return;
-            }
-
-            uintptr_t CLTModelServerPtr = mem.Read<uintptr_t>(vTable);
-            if (!CLTModelServerPtr) {
-                Utils::DebugLog("❌ Failed to read CLTModelServer instance!");
-                return;
-            }
-
-            Transform Trans;
-            Utils::DebugLog("🔍 Calling GetNodeTransform at 0x%llX",
-                (uintptr_t)aGetNodeTransform);
-
-            if (SafeGetNodeTransform(CLTModelServerPtr, playerModel, Bone, &Trans)) {
-                Out = Trans.Pos;
-                Out.y += 5;
-            }
-            else {
-                Utils::DebugLog("❌ GetNodeTransform execution failed!");
-            }
-        }
-
-        D3DXVECTOR3 GetBonePosition(obj* playerModel, uint32_t Bone) {
-            D3DXVECTOR3 out{};
-            GetNodePosition(playerModel, Bone, out);
-            return out;
-        }
-    };
-    class ILTClient {
-    public:
-        using SetObjectOutLineFn = void(__stdcall*)(uintptr_t thisPtr,
-            uintptr_t Object, bool Status,
-            BYTE R, BYTE G, BYTE B);
-
-    private:
-        uintptr_t vTable = 0;
-        SetObjectOutLineFn aSetObjectOutLine = nullptr;
-        Memory& mem;  // DMA Memory Reference
-
-    public:
-        explicit ILTClient(Memory& memory) : mem(memory) {
-            vTable = CFBASE + 0x457960;  // ✅ Make sure this address is correct
-            if (vTable) {
-                aSetObjectOutLine = GetVFuncDMA<SetObjectOutLineFn>(
-                    vTable, 82, mem);  // ✅ Uses correct VTable index (33)
-            }
-        }
-
-        bool IsValid() const { return vTable != 0 && aSetObjectOutLine != nullptr; }
-
-        void SetGlow(pCharacterFx* targetObject, bool enable, BYTE R, BYTE G,
-            BYTE B) {
-            if (!targetObject) {
-                Utils::DebugLog("❌ SetGlow failed! Target object is NULL.");
-                return;
-            }
-
-            if (!aSetObjectOutLine) {
-                Utils::DebugLog("❌ aSetObjectOutLine function pointer is NULL!");
-                return;
-            }
-
-            uintptr_t ILTClientPtr = mem.Read<uintptr_t>(vTable);
-            if (!ILTClientPtr) {
-                Utils::DebugLog("❌ Failed to read ILTClient instance!");
-                return;
-            }
-
-            Utils::DebugLog("✨ Calling SetObjectOutLine at 0x%llX",
-                (uintptr_t)aSetObjectOutLine);
-
-            aSetObjectOutLine(ILTClientPtr, (uintptr_t)targetObject, enable, R, G, B);
-        }
-
-        void TestGlowESP(Memory& mem, pCharacterFx* targetObject) {
-            ILTClient ltClient(mem);
-
-            if (!ltClient.IsValid()) {
-                Utils::DebugLog("❌ ILTClient is invalid! GlowESP cannot run.");
-                return;
-            }
-
-            if (!targetObject) {
-                Utils::DebugLog("❌ Target object is NULL!");
-                return;
-            }
-
-            Utils::DebugLog("🛑 Applying Glow ESP to hObject: 0x%llX",
-                (uintptr_t)targetObject);
-
-            // Apply Red Glow
-            ltClient.SetGlow(targetObject, true, 255, 0, 0);
-        }
-    };
-
-   
-
+        return false;
+    }
+ 
     inline void HookGlowESP(Memory& mem, pObject* pObjectFx, bool enable, BYTE R, BYTE G, BYTE B) {
         if (!pObjectFx) {
             Utils::DebugLog("❌ pObjectFx is NULL! Cannot apply Glow ESP.");
@@ -823,63 +699,7 @@ namespace KLASSES {
 
 
 
-
-    inline void OutlineOnePlayer(Memory& mem, uintptr_t objectPtr, bool enable, BYTE R, BYTE G, BYTE B)
-    {
-        if (!objectPtr) return;
-
-        // 1) Code cave
-        uintptr_t cave = mem.shellcode.find_codecave(128, "crossfire.exe", "d3dx9_29.dll");
-        if (!cave) return;
-
-        // 2) Our ephemeral target function to patch. 
-        //    It MUST be something the game calls often. Example: 0x140100000 (placeholder).
-        void* ephemeralFunc = (void*)0x140100000;
-
-        // 3) Prepare a small stub. We'll do:
-        //    sub rsp, 0x28
-        //    mov rcx, <objectPtr>
-        //    mov dl, <enable>
-        //    mov r8b, <R>
-        //    mov r9b, <G>
-        //    push <B>    (5th param on stack)
-        //    mov rax, 0x1400501E0
-        //    call rax
-        //    add rsp, 0x28
-        //    ret
-        BYTE stub[] = {
-            0x48, 0x83, 0xEC, 0x28,                // sub rsp,0x28
-            0x48, 0xB9,                            // mov rcx, <objectPtr> (8 bytes)
-            0,0,0,0,0,0,0,0,
-            0xB2, 0x00,                            // mov dl, 0x00
-            0x41, 0xB0, 0x00,                      // mov r8b, 0x00
-            0x41, 0xB1, 0x00,                      // mov r9b, 0x00
-            0x68, 0x00, 0x00, 0x00, 0x00,          // push 0x00000000 (placeholder for B)
-            0x48, 0xB8,                            // mov rax, <0x1400501E0> (8 bytes)
-            0,0,0,0,0,0,0,0,
-            0xFF, 0xD0,                            // call rax
-            0x48, 0x83, 0xC4, 0x28,                // add rsp,0x28
-            0xC3                                   // ret
-        };
-
-        // Fill placeholders:
-        *(uint64_t*)&stub[6] = (uint64_t)objectPtr;       // RCX
-        stub[16] = (enable ? 1 : 0);          // DL
-        stub[19] = R;                         // R8b
-        stub[22] = G;                         // R9b
-        *(uint32_t*)&stub[25] = (uint32_t)B;               // push B
-        *(uint64_t*)&stub[31] = 0x00000001400501E0ULL;     // ObjectOutline code
-
-        // 4) Write stub to code cave
-        mem.Write(cave, stub, sizeof(stub));
-
-        // 5) Ephemeral hook: temporarily patch ephemeralFunc with jump -> cave
-        //    Overwrites ephemeralFunc with a jmp for ~100ms, then reverts
-        mem.shellcode.call_function((void*)cave, ephemeralFunc, "crossfire.exe");
-    }
-
-
-
+     
 
 
 

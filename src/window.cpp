@@ -102,8 +102,8 @@ void window::render_frame() {
         for (const auto& rect : smoothedRects)
         {
 
-            int adjustedX = rect.x - 6;
-            int adjustedY = rect.y - 2;
+            int adjustedX = rect.x - 5;
+            int adjustedY = rect.y - 1;
             int adjustedW = rect.w + 1;
             int adjustedH = rect.h + 1;
 
@@ -136,6 +136,7 @@ void window::render_frame() {
     else {
         ESPManager::GetInstance().StopESP();
         {
+            window::outlined_text(ImVec2(50, 50), IM_COL32(255, 0, 0, 255), "ESP Overlay OFF");
             std::lock_guard<std::mutex> lock(g_espMutex);
             g_espRects.clear();
             cachedRects.clear();

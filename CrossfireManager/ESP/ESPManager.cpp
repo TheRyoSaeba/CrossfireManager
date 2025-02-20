@@ -63,7 +63,7 @@ void ESPManager::ESPWorker(std::stop_token stopToken, Memory& mem) {
      
     while (!stopToken.stop_requested() && m_active.load(std::memory_order_relaxed)) {
         DrawPlayerESP(mem);
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+        std::this_thread::sleep_for(std::chrono::milliseconds(8));
     }
 }
 
@@ -71,7 +71,7 @@ void ESPManager::DrawPlayerESP(Memory& mem) {
 
     static auto lastCacheUpdate = std::chrono::steady_clock::now();
     const auto now = std::chrono::steady_clock::now();
-    const bool updateCache = (now - lastCacheUpdate > 128ms);
+    const bool updateCache = (now - lastCacheUpdate > 64ms);
 
     static struct {
         LTClientShell clientShell;

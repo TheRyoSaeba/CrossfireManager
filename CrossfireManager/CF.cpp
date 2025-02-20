@@ -35,19 +35,21 @@ std::atomic<bool> dma_success(false);
 
 void InitializeDMA(ftxui::ScreenInteractive* screen) {
 	for (int attempts = 0; attempts < 3; ++attempts) {
-		if (mem.Init("crossfire.exe",true)) break;
-		std::this_thread::sleep_for(std::chrono::seconds(1));
+		if (!mem.Init("crossfire.exe"))
+			std::this_thread::sleep_for(std::chrono::seconds(5));
+		else
+			break;
 	}
 
 	CFBASE = mem.GetBaseDaddy("crossfire.exe");
 	CFSHELL = mem.GetBaseDaddy("CShell_x64.dll");
 
-	dma_status = (CFBASE && CFSHELL) ? "DMA Connected" : "Failed to find Crossfire.exe!";
+	dma_status = (CFBASE && CFSHELL) ? "DMA Connected" : "Connection Failed!";
 	dma_success.store(CFBASE && CFSHELL);
-	//dma_status += kmBoxBMgr.init() == -1 ? ", but KMBOX Failed!" : " & KMBOX Connected";
 
 	screen->PostEvent(ftxui::Event::Custom);
 }
+
 
 void UpdateOffsets(ftxui::ScreenInteractive* screen) {
 	while (!dma_success.load()) std::this_thread::sleep_for(std::chrono::milliseconds(50));

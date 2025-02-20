@@ -44,7 +44,7 @@ void window::render_frame() {
 
      
     if (ESPDRAWBOX) {
-        if(!ESPManager::GetInstance().IsESPActive())
+        if(!ESPManager::GetInstance().IsESPActive()) // this might be issue
         ESPManager::GetInstance().StartESP(mem);
 
         ImGui::Begin("MakimuraDMA", nullptr,
@@ -99,6 +99,7 @@ void window::render_frame() {
         }
     }
     else {
+        if (ESPManager::GetInstance().IsESPActive()) // this might be issue
         ESPManager::GetInstance().StopESP();
         {
             window::outlined_text(ImVec2(50, 50), IM_COL32(255, 0, 0, 255), "ESP Overlay OFF");

@@ -1,7 +1,6 @@
 ﻿#include "ESPManager.hpp"
 #include <algorithm>
 #include "Overlay.h"
-#include "Overlay.h"
 #include <vector>
 #include <array>
 using namespace KLASSES;
@@ -63,15 +62,14 @@ void ESPManager::ESPWorker(std::stop_token stopToken, Memory& mem) {
      
     while (!stopToken.stop_requested() && m_active.load(std::memory_order_relaxed)) {
         DrawPlayerESP(mem);
-        std::this_thread::sleep_for(std::chrono::milliseconds(8));
+        std::this_thread::sleep_for(std::chrono::milliseconds(3));
     }
 }
 
 void ESPManager::DrawPlayerESP(Memory& mem) {
-
     static auto lastCacheUpdate = std::chrono::steady_clock::now();
     const auto now = std::chrono::steady_clock::now();
-    const bool updateCache = (now - lastCacheUpdate > 64ms);
+    const bool updateCache = (now - lastCacheUpdate > 15ms);
 
     static struct {
         LTClientShell clientShell;
@@ -79,16 +77,16 @@ void ESPManager::DrawPlayerESP(Memory& mem) {
         std::vector<pPlayer> players;
         std::array<D3DXVECTOR3, MAX_PLAYERS> headPositions;
         std::array<D3DXVECTOR3, MAX_PLAYERS> footPositions;
+        std::array<int8_t, MAX_PLAYERS> isDeadFlags;
     } cache;
 
     if (updateCache) {
-
         if (!mem.Read(LT_SHELL, &cache.clientShell, sizeof(LTClientShell))) {
             std::lock_guard<std::mutex> lock(g_espMutex);
             g_espRects.clear();
             return;
         }
-        if (!cache.clientShell.CPlayerClntBase) {
+        if (!cache.clientShell.ModelInstance) {
             std::lock_guard<std::mutex> lock(g_espMutex);
             g_espRects.clear();
             return;
@@ -98,38 +96,52 @@ void ESPManager::DrawPlayerESP(Memory& mem) {
     }
 
     cache.players.resize(MAX_PLAYERS);
-
     LT_DRAWPRIM globalDrawPrim = mem.Read<LT_DRAWPRIM>(offs::ILTDrawPrim);
-
     for (int i = 0; i < MAX_PLAYERS; i++) {
         cache.players[i] = cache.clientShell.GetPlayerByIndex(i);
-        if (cache.players[i].hObject &&
-            cache.players[i].Team != cache.localPlayer.Team &&
-            cache.players[i].ClientID != cache.localPlayer.ClientID) {
-            uintptr_t playerAddr = reinterpret_cast<uintptr_t>(cache.players[i].hObject);
-            cache.headPositions[i] = mem.Read<D3DXVECTOR3>(playerAddr + offsetof(obj, Head));
-            cache.footPositions[i] = mem.Read<D3DXVECTOR3>(playerAddr + offsetof(obj, foot));
-        }
     }
+
+    VMMDLL_SCATTER_HANDLE scatterHandle = mem.CreateScatterHandle();
+    if (scatterHandle == nullptr) {
+        std::lock_guard<std::mutex> lock(g_espMutex);
+        g_espRects.clear();
+        return;
+    }
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        const pPlayer& p = cache.players[i];
+
+       
+        if (!p.hObject || p.Team == cache.localPlayer.Team ||   p.ClientID == cache.localPlayer.ClientID)
+            continue;
+        uintptr_t playerAddr = reinterpret_cast<uintptr_t>(p.hObject);
+        mem.AddScatterReadRequest(scatterHandle, playerAddr + offsetof(obj, Head), &cache.headPositions[i], sizeof(D3DXVECTOR3));
+        mem.AddScatterReadRequest(scatterHandle, playerAddr + offsetof(obj, foot), &cache.footPositions[i], sizeof(D3DXVECTOR3));
+        mem.AddScatterReadRequest(
+            scatterHandle,
+            reinterpret_cast<uintptr_t>(p.characFX) + offsetof(pCharacterFx, isDead),
+            &cache.isDeadFlags[i],
+            sizeof(int8_t)
+        );
+    }
+    mem.ExecuteReadScatter(scatterHandle);
+    mem.CloseScatterHandle(scatterHandle);
 
     std::vector<RectData> frameRects;
     for (int i = 0; i < MAX_PLAYERS; i++) {
-        if (!cache.players[i].hObject ||
-            cache.players[i].Team == cache.localPlayer.Team ||
-            cache.players[i].ClientID == cache.localPlayer.ClientID)
+        const pPlayer& p = cache.players[i];
+        if (p.Team == cache.localPlayer.Team || p.ClientID == cache.localPlayer.ClientID || cache.isDeadFlags[i] != 0)
             continue;
 
         D3DXVECTOR3 headPos = cache.headPositions[i];
         D3DXVECTOR3 footPos = cache.footPositions[i];
 
-        if (!EngineW2S(globalDrawPrim, &headPos) ||
-            !EngineW2S(globalDrawPrim, &footPos))
+        if (!EngineW2S(globalDrawPrim, &headPos) || !EngineW2S(globalDrawPrim, &footPos))
             continue;
 
-        D3DXVECTOR3 bodyCenter{
+        D3DXVECTOR3 bodyCenter = {
             (headPos.x + footPos.x) / 2.0f,
             (headPos.y + footPos.y) / 2.0f,
-            0
+            0.0f
         };
 
         headPos.x = bodyCenter.x;
@@ -137,8 +149,8 @@ void ESPManager::DrawPlayerESP(Memory& mem) {
         headPos.z = bodyCenter.z;
         footPos.z = bodyCenter.z;
 
-        const float height = fabs(headPos.y - footPos.y);
-        const float width = height * 0.6f;
+        float height = fabs(headPos.y - footPos.y);
+        float width = height * 0.6f;
 
         RectData rect;
         rect.x = static_cast<int>(bodyCenter.x - width / 2);
@@ -146,8 +158,8 @@ void ESPManager::DrawPlayerESP(Memory& mem) {
         rect.w = static_cast<int>(width);
         rect.h = static_cast<int>(height);
         rect.color = ESPColorEnemy;
-        rect.playerName = cache.players[i].Name;
-        rect.currentHP = cache.players[i].Health;
+        rect.playerName = p.Name;
+        rect.currentHP = p.Health;
         rect.maxHP = 100;
 
         frameRects.push_back(rect);

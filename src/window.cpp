@@ -46,14 +46,16 @@ void window::render_frame() {
     if (ESPDRAWBOX) {
         if(!ESPManager::GetInstance().IsESPActive()) // this might be issue
         ESPManager::GetInstance().StartESP(mem);
-
+        ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize, ImGuiCond_Always);
         ImGui::Begin("MakimuraDMA", nullptr,
             ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar |
             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground);
-
+        
         window::outlined_text(ImVec2(50, 50), IM_COL32(255, 0, 0, 255), "ESP Overlay ON");
-        ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
+        float fps = ImGui::GetIO().Framerate;
+        ImGui::Text("Framerate: %.1f FPS", fps);
 
         ImGui::End();
 
@@ -68,16 +70,16 @@ void window::render_frame() {
         for (const auto& rect : rectsCopy) {
 
             int adjustedX = rect.x - 5;
-            int adjustedY = rect.y - 1;
-            int adjustedW = rect.w + 1;
-            int adjustedH = rect.h + 1;
+            int adjustedY = rect.y - 2;
+            int adjustedW = rect.w + 2;
+            int adjustedH = rect.h + 2;
 
             drawList->AddRect(
 
                 ImVec2(static_cast<float>(adjustedX), static_cast<float>(adjustedY)),
                 ImVec2(static_cast<float>(adjustedX + adjustedW), static_cast<float>(adjustedY + adjustedH)),
                 IM_COL32(rect.color.R, rect.color.G, rect.color.B, rect.color.A),
-                0.0f, ImDrawFlags_Closed, 1.8f
+                0.0f, ImDrawFlags_Closed, 2.1f
             );
 
             ImVec2 textSize = ImGui::CalcTextSize(rect.playerName.c_str());
@@ -85,7 +87,7 @@ void window::render_frame() {
             float nameY = rect.y - textSize.y - 2.0f;
             drawList->AddText(ImVec2(nameX, nameY), IM_COL32(255, 255, 255, 255), rect.playerName.c_str());int hp = std::max(0, rect.currentHP);
             float healthPercent = static_cast<float>(hp) / static_cast<float>(rect.maxHP);
-            float barWidth = 4.0f;
+            float barWidth = 5.0f;
             float barHeight = rect.h * healthPercent;
             float barX = rect.x - (barWidth + 3.0f);
             float barY = rect.y + (rect.h - barHeight);
@@ -103,6 +105,8 @@ void window::render_frame() {
         ESPManager::GetInstance().StopESP();
         {
             window::outlined_text(ImVec2(50, 50), IM_COL32(255, 0, 0, 255), "ESP Overlay OFF");
+            float fps = ImGui::GetIO().Framerate;
+            ImGui::Text("Framerate: %.1f FPS", fps);
             std::lock_guard<std::mutex> lock(g_espMutex);
             g_espRects.clear();
             cachedRects.clear();
@@ -126,7 +130,7 @@ void window::render_frame() {
     g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
     // Present the frame
-    g_pSwapChain->Present(vsync == 1 ? 1 : 0, 0);
+    g_pSwapChain->Present(0, 0);
 
     if (!vsync && fps_limit > 0) {
         static auto lastFrameTime = std::chrono::high_resolution_clock::now();
@@ -352,7 +356,7 @@ void window::init(bool* running) {
 
     // ✅ Use `CreateWindowExW()` with Unicode (`LPCWSTR`)
     hwnd = CreateWindowExW(
-        WS_EX_TOPMOST | WS_EX_LAYERED   | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE|WS_EX_LAYERED | WS_EX_TOOLWINDOW,  // Ensure transparency
+       WS_EX_LAYERED   | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE|WS_EX_LAYERED | WS_EX_TOOLWINDOW,  // Ensure transparency
         title.c_str(), title.c_str(),
         WS_POPUP,  // Removes title bar/borders
         0, 0, window::wx, window::wy,
@@ -364,16 +368,16 @@ void window::init(bool* running) {
         return;
     }
 
-
+    //WS_EX_TOPMOST
 
     // Ensure color key transparency (black background removed)
-    SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
+    SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
 
 
     // Ensure window is borderless and covers the whole screen
   
     SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) & ~WS_EX_APPWINDOW);
-    SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
+    SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
     //SetWindowLong(hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
     ShowWindow(hwnd, SW_SHOWMAXIMIZED);
     UpdateWindow(hwnd);
@@ -450,7 +454,7 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
             window::monitor_enum_state++;
             return TRUE;
         }
-        SetWindowLong(window::hwnd, GWL_EXSTYLE, GetWindowLong(window::hwnd, GWL_EXSTYLE) | WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST);
+        SetWindowLong(window::hwnd, GWL_EXSTYLE, GetWindowLong(window::hwnd, GWL_EXSTYLE) | WS_EX_LAYERED | WS_EX_TRANSPARENT  );
 
         // Set the window position and size to cover the entire monitor
         SetWindowPos(window::hwnd, nullptr,
@@ -461,7 +465,7 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
             SWP_FRAMECHANGED | SWP_NOZORDER | SWP_NOOWNERZORDER);
         SetWindowPos(window::hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
         return FALSE;
-    }
+    }                //WS_EX_TOPMOST
 
     return TRUE; // Continue enumerating
 }
@@ -475,16 +479,16 @@ void window::set_monitor(int index) {
 void window::set_overlay(bool state, bool transparent) {
     if (state) {
         // Set window style for transparency
-        SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_TOPMOST | WS_EX_LAYERED);
+        SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) |  WS_EX_LAYERED);
 
         if (transparent) {
-            SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
+            SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
         }
         else {
             SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), 0, NULL);
         }
 
-        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+        SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
         return;
     }
 

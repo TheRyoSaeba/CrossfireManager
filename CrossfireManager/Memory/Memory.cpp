@@ -771,7 +771,7 @@ void Memory::ExecuteReadScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
 
 	if (!VMMDLL_Scatter_ExecuteRead(handle))
 	{
-		LOG("[-] Failed to Execute Scatter Read\n");
+		//LOG("[-] Failed to Execute Scatter Read\n");
 	}
 	//Clear after using it
 	if (!VMMDLL_Scatter_Clear(handle, pid, VMMDLL_FLAG_NOCACHE))

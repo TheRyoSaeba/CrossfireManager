@@ -19,12 +19,13 @@
 #include <Triggerbot.h>
 #include "imgui.h"
 #include <ESPManager.hpp>
+#include <InputManager.h>
 
 std::string dma_status = "Connecting to DMA ...";
 std::string update_status = "Updating Offsets";
 std::atomic<bool> dma_success(false);
 
- 
+static c_keys keys;
  
 
 
@@ -35,7 +36,7 @@ std::atomic<bool> dma_success(false);
 
 void InitializeDMA(ftxui::ScreenInteractive* screen) {
 	for (int attempts = 0; attempts < 3; ++attempts) {
-		if (!mem.Init("crossfire.exe"))
+		if (!mem.Init("crossfire.exe",true))
 			std::this_thread::sleep_for(std::chrono::seconds(5));
 		else
 			break;
@@ -46,7 +47,7 @@ void InitializeDMA(ftxui::ScreenInteractive* screen) {
 
 	dma_status = (CFBASE && CFSHELL) ? "DMA Connected" : "Connection Failed!";
 	dma_success.store(CFBASE && CFSHELL);
-
+	 
 	screen->PostEvent(ftxui::Event::Custom);
 }
 

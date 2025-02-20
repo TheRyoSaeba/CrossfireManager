@@ -205,8 +205,11 @@
     <ClInclude Include="CrossfireManager\Memory\Memory.h" />
     <ClInclude Include="CrossfireManager\Memory\Registry.h" />
     <ClInclude Include="CrossfireManager\Memory\Shellcode.h" />
+    <ClInclude Include="CrossfireManager\Memory\structs.h" />
+    <ClInclude Include="CrossfireManager\Memory\xorstr.hpp" />
     <ClInclude Include="CrossfireManager\offsets.h" />
     <ClInclude Include="CrossfireManager\Overlay.h" />
+    <ClInclude Include="CrossfireManager\Template\Cache.h" />
     <ClInclude Include="CrossfireManager\Triggerbot\Triggerbot.h" />
     <ClInclude Include="CrossfireManager\UI\FTXUI.hpp" />
     <ClInclude Include="ImGui\imconfig.h" />

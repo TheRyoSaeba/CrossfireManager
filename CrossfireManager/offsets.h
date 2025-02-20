@@ -26,7 +26,7 @@ namespace offs {
 ________:00000001400195B0                 lea     rdx, off_140FB6110   + 0x2c70
      ================================================================================
     */
-    // declared extern if needed in other .cpp
+   
     constexpr auto VIEWMATRIX_PATTERN =
         "48 8D 15 ? ? ? ? FF 50 20 48 8D 0D ? ? ? ? 48 83 C4 30 5B E9 ? ? ? ? CC CC CC CC CC 48 8D 0D ? ? ? ?";
 

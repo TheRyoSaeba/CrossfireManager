@@ -16,10 +16,11 @@
 #include "ftxui/component/component.hpp"
 #include "offsets.h"
 #include "FTXUI.hpp"
-#include <Triggerbot.h>
+#include <Aimbot.hpp>
 #include "imgui.h"
 #include <ESPManager.hpp>
 #include <InputManager.h>
+#include "KMBOX.h"
 
 std::string dma_status = "Connecting to DMA ...";
 std::string update_status = "Updating Offsets";
@@ -36,7 +37,7 @@ static c_keys keys;
 
 void InitializeDMA(ftxui::ScreenInteractive* screen) {
 	for (int attempts = 0; attempts < 3; ++attempts) {
-		if (!mem.Init("crossfire.exe",true))
+		if (!mem.Init("crossfire.exe", true))
 			std::this_thread::sleep_for(std::chrono::seconds(5));
 		else
 			break;
@@ -45,15 +46,32 @@ void InitializeDMA(ftxui::ScreenInteractive* screen) {
 	CFBASE = mem.GetBaseDaddy("crossfire.exe");
 	CFSHELL = mem.GetBaseDaddy("CShell_x64.dll");
 
-	dma_status = (CFBASE && CFSHELL) ? "DMA Connected" : "Connection Failed!";
-	dma_success.store(CFBASE && CFSHELL);
-	 
+	if (CFBASE && CFSHELL) {
+		int kmResult = kmBoxBMgr.init();
+		if (kmResult == -1) {
+			dma_status = "DMA Connected but KMBOX Failed!";
+		}
+		else if (kmResult == -2) {
+			 
+			dma_status = "DMA Connected but KMBOX Port Not Open!";
+		}
+		else {
+			 
+			dma_status = "DMA and KMBOX Connected";
+		}
+		dma_success.store(true);
+	}
+	else {
+		dma_status = "Connection Failed! Try Restarting PC";
+		dma_success.store(false);
+	}
+
 	screen->PostEvent(ftxui::Event::Custom);
 }
 
 
 void UpdateOffsets(ftxui::ScreenInteractive* screen) {
-	while (!dma_success.load()) std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	while (!dma_success.load()) std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
 	update_status = KLASSES::Update(mem) ? "Offsets Updated \a \t" : "Failed to Update Offsets!";
 	screen->PostEvent(ftxui::Event::Custom);
@@ -78,83 +96,71 @@ ftxui::Component DisplayStatsAndGraph(ftxui::ScreenInteractive& screen, Memory& 
 static std::jthread espThread;
  
 void HandleMenuSelection(int selected, ftxui::ScreenInteractive& screen, ftxui::Component& dynamic_content, std::jthread& triggerbotThread) {
-
 	if (update_status != "Offsets Updated \a \t") {
 		dynamic_content = ftxui::Renderer([] { return ftxui::text("Waiting for offsets...") | ftxui::border; });
 		screen.PostEvent(ftxui::Event::Custom);
 		return;
 	}
 
-	switch (selected) {
-	case 0: {
-		 
-		offs::ESPDRAWBOX = !offs::ESPDRAWBOX;
-		screen.PostEvent(ftxui::Event::Custom); 
-		break;
-	}
+	if (selected < 0) return;  
 
+	static std::jthread glowThread;  
 
-	case 1:
-	{
-		static std::jthread glowThread;
-		glowThread = std::jthread([&]() {
-			KLASSES::LTClientShell CLIENT = mem.Read<KLASSES::LTClientShell>(LT_SHELL);
-			for (int i = 0; i < 16; i++) {
-				KLASSES::pPlayer player = CLIENT.GetPlayerByIndex(i);
-				if (!player.hObject)
-					continue;
-				//KLASSES::HookGlowESPS(mem, reinterpret_cast<uintptr_t>(player.hObject), true, 255, 0, 0);
+	if (update_status == "Offsets Updated \a \t") {
+		switch (selected) {
+		case 0:
+			offs::ESPDRAWBOX = !offs::ESPDRAWBOX;
+			 
+			screen.PostEvent(ftxui::Event::Custom);
+			break;
+	
+		case 1: {
+			 
+			break;
+		}
+
+		case 2:
+			KLASSES::LTClientShell cltShell = mem.Read<KLASSES::LTClientShell>(LT_SHELL);
+			if (!cltShell.CPlayerClntBase) {
+				dynamic_content = ftxui::Renderer([] { return ftxui::text("Not in Game") | ftxui::border; });
+				screen.PostEvent(ftxui::Event::Custom);
+				return;
+			}
+			KLASSES::show_entity_list = !KLASSES::show_entity_list;
+			dynamic_content = DisplayStatsAndGraph(screen, mem);
+			screen.PostEvent(ftxui::Event::Custom);
+			break;
+
+		case 3:
+			KLASSES::show_addresses = !KLASSES::show_addresses;
+			dynamic_content = ftxui::Renderer([&] {
+				return KLASSES::show_addresses ? KLASSES::DisplayAddresses(mem) : ftxui::emptyElement();
+				});
+			screen.PostEvent(ftxui::Event::Custom);
+			break;
+
+		case 4:
+			if (!KLASSES::AimbotManager::GetInstance().IsAimbotActive()) {
+				KLASSES::AimbotManager::GetInstance().StartAimbot(mem);
+			}
+			else {
+				KLASSES::AimbotManager::GetInstance().StopAimbot();
 			}
 			screen.PostEvent(ftxui::Event::Custom);
-			});
-		break;
-	}
-	case 2:
-	{
-		KLASSES::LTClientShell cltShell = mem.Read<KLASSES::LTClientShell>(LT_SHELL);
+			break;
 
-		if (!cltShell.CPlayerClntBase) {
-			dynamic_content =
-				ftxui::Renderer([] { return ftxui::text("Not in Game") | ftxui::border; });
+		case 5:
+			KLASSES::show_module = !KLASSES::show_module;
+			dynamic_content = ftxui::Renderer([&] {
+				return KLASSES::show_module ? KLASSES::DumpModule(screen) : ftxui::emptyElement();
+				});
 			screen.PostEvent(ftxui::Event::Custom);
-
+			break;
 		}
-
-		KLASSES::show_entity_list = !KLASSES::show_entity_list;
-		dynamic_content = DisplayStatsAndGraph(screen, mem);
-
-		screen.PostEvent(ftxui::Event::Custom);
-		break;
-
-	}
-
-	case 3:
-		KLASSES::show_addresses = !KLASSES::show_addresses;
-		dynamic_content = ftxui::Renderer([&] {
-			return KLASSES::show_addresses ? KLASSES::DisplayAddresses(mem) : ftxui::emptyElement();
-			});
-		screen.PostEvent(ftxui::Event::Custom);
-		break;
-
-	case 4:
-		if (!triggerbotThread.joinable()) {
-			triggerbotThread = std::jthread([] {});
-			KLASSES::Triggerbot::Triggerbot(mem);
-		}
-		screen.PostEvent(ftxui::Event::Custom);
-		break;
-
-	case 5:
-		KLASSES::show_module = !KLASSES::show_module;
-		dynamic_content = ftxui::Renderer([&] {
-			return KLASSES::show_module ? KLASSES::DumpModule(screen) : ftxui::emptyElement();
-			});
-	 
-		 
-		screen.PostEvent(ftxui::Event::Custom);
-		break;
 	}
 }
+
+
 
 int main() {
 

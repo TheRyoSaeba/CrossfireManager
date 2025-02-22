@@ -64,7 +64,6 @@ typedef char Byte14[14];
 #include "Memory/Shellcode.h"
 #include "Shellcode.h"
 #include "offsets.h"
-
 // FTXUI
 #include <ftxui/component/captured_mouse.hpp>
 #include <ftxui/component/component.hpp>
@@ -81,25 +80,8 @@ typedef char Byte14[14];
 #include <ftxui/screen/terminal.hpp>
 #include <ftxui/util/ref.hpp>
 #include <map>
-
-template <typename T>
-T GetVFuncDMA(uintptr_t vTable, int index, Memory& mem) {
-    uintptr_t functionPtr = mem.Read<uintptr_t>(vTable + (index * 8));
-    return reinterpret_cast<T>(functionPtr);
-}
-template <typename Fn>
-Fn GetVFuncExternal(Memory& mem, uintptr_t thisPtr, size_t index) {
-     
-    uintptr_t vtablePtr = 0;
-    mem.Read(thisPtr, &vtablePtr, sizeof(vtablePtr));
-
-    // 2) Read the function pointer from [vtablePtr + (index * sizeof(uintptr_t))].
-    uintptr_t funcAddr = 0;
-    mem.Read(vtablePtr + index * sizeof(uintptr_t), &funcAddr, sizeof(funcAddr));
-
-    // 3) Cast it to your desired function signature.
-    return reinterpret_cast<Fn>(funcAddr);
-}
+ 
+ 
 
 using namespace ftxui;
 namespace KLASSES {
@@ -169,7 +151,10 @@ namespace KLASSES {
         char pad_004D[3219];     // 0x004D
         int16_t ACE;             // 0x0CE0
         char pad_0CE2[86];       // 0x0CE2
+        char padding[0xDC8 - 0x0D38]; // Add padding to match 0xDC8
     };
+
+    static_assert(sizeof(pPlayer) == 0xDC8, "pPlayer size mismatch!");
 
     class pCharacterFx {
     public:
@@ -331,9 +316,13 @@ namespace KLASSES {
     // Size: 0x0147
 
     struct obj {
-        char pad_0000[8];  // 0x0000
-        D3DXVECTOR3 foot;  // 0x0008
-        D3DXVECTOR3 Head;  // 0x0014
+        char pad_0000[8]; //0x0000
+        D3DXVECTOR3 foot; //0x0008
+        D3DXVECTOR3 Head; //0x0014
+        char pad_0020[404]; //0x0020
+        D3DXVECTOR3 AbsolutePosition; //0x01B4
+        char pad_01C0[670]; //0x01C0
+
 
         static D3DXVECTOR3 GetFoot(Memory& mem, uintptr_t hObject) {
             if (!hObject) return { 0.0f, 0.0f, 0.0f };
@@ -480,25 +469,7 @@ namespace KLASSES {
         ================================================================================
     */
 
-    inline bool World2Screen(D3DXVECTOR3* InOut) {
-        D3DXMATRIX g_view_matx = mem.Read<D3DXMATRIX>(offs::ViewMatrix);
-        D3DXMATRIX g_view_proj = mem.Read<D3DXMATRIX>(offs::ViewMatrix + 0x40);
-        D3DVIEWPORT9 g_view_port = mem.Read<D3DVIEWPORT9>(offs::ViewMatrix + 0x80);
-        D3DXMATRIX g_view_wrld =
-            D3DXMATRIX(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-                1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
-
-        D3DXVECTOR3 vScreen;
-        D3DXVECTOR3 PlayerPos(InOut->x, InOut->y, InOut->z);
-
-        D3DXVec3Project(&vScreen, &PlayerPos, &g_view_port, &g_view_proj,
-            &g_view_matx, &g_view_wrld);
-        if (vScreen.z <= 1.0f) {
-            *InOut = vScreen;
-            return true;
-        }
-        return false;
-    }
+    
 inline bool EngineW2S(const LT_DRAWPRIM& drawPrim, D3DXVECTOR3* InOut) {
     D3DXVECTOR3 vScreen;
     D3DXVECTOR3 worldPos = *InOut;
@@ -595,6 +566,7 @@ inline bool EngineW2S(const LT_DRAWPRIM& drawPrim, D3DXVECTOR3* InOut) {
 
 
      
+    
 
 
 
@@ -607,7 +579,8 @@ inline bool EngineW2S(const LT_DRAWPRIM& drawPrim, D3DXVECTOR3* InOut) {
     inline bool Update(Memory& mem) {
         size_t CSHELL_SIZE = mem.GetBaseSize("CShell_x64.dll");
         if (!CFSHELL || CSHELL_SIZE == 0) return false;
-
+        size_t CFBASE_SIZE = mem.GetBaseSize("crossfire.exe");
+        if (!CFBASE || CFBASE_SIZE == 0) return false;
         uintptr_t FirstsigResult =
             mem.FindSignature(offs::LT_PATTERN, CFSHELL, CFSHELL + CSHELL_SIZE);
         if (!FirstsigResult) return false;
@@ -634,7 +607,17 @@ inline bool EngineW2S(const LT_DRAWPRIM& drawPrim, D3DXVECTOR3* InOut) {
 
         offs::dwCPlayerSize = mem.Read<int32_t>(ThirdSigResult + 3);
         Utils::DebugLog("sigResult: MY_PLAYERSIZE: 0x%X", offs::dwCPlayerSize);
-        return (LT_SHELL >= CFSHELL && LT_SHELL < CFSHELL + CSHELL_SIZE);
+
+        uintptr_t FourthSigResult = mem.FindSignature(offs::DRAWPRIM_PATTERN, CFBASE, CFBASE + CFBASE_SIZE);
+        if (!FourthSigResult)
+            return false;
+        int32_t drawprimOffset = mem.Read<int32_t>(FourthSigResult + 3);
+        offs::ILTDrawPrim = FourthSigResult + 7 + drawprimOffset;
+        Utils::DebugLog("sigResult: 0x%llX, offset: 0x%X, DRAWPRIM: 0x%llX",
+            FourthSigResult, drawprimOffset, offs::ILTDrawPrim);
+
+
+        return  (LT_SHELL <= CFSHELL + CSHELL_SIZE);
     }
 
 

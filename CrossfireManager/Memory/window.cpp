@@ -12,7 +12,8 @@
 #include <vector>
 #include <Overlay.h>
 #include <offsets.h>
-
+extern std::mutex g_espRectsMutex;
+extern std::vector<RectData> g_espRectsFront;
 #ifndef RGB
 #define RGB(r, g, b) ((DWORD)(((BYTE)(r) | ((WORD)(g) << 8)) | (((DWORD)(BYTE)(b)) << 16)))
 #endif
@@ -61,8 +62,8 @@ void window::render_frame() {
 
         std::vector<RectData> rectsCopy;
         {
-            std::lock_guard<std::mutex> lock(g_espMutex);
-            rectsCopy = g_espRects;
+            std::lock_guard<std::mutex> lock(g_espRectsMutex);
+            rectsCopy = g_espRectsFront;
         }
 
         auto drawList = ImGui::GetForegroundDrawList();
@@ -70,9 +71,12 @@ void window::render_frame() {
         for (const auto& rect : rectsCopy) {
 
             int adjustedX = rect.x - 5;
-            int adjustedY = rect.y - 2;
+            int adjustedY = rect.y - 1;
             int adjustedW = rect.w + 2;
-            int adjustedH = rect.h + 2;
+            int adjustedH = rect.h - 1;
+
+            
+
 
             drawList->AddRect(
 
@@ -85,9 +89,9 @@ void window::render_frame() {
             ImVec2 textSize = ImGui::CalcTextSize(rect.playerName.c_str());
             float nameX = rect.x + (rect.w - textSize.x) * 0.5f;
             float nameY = rect.y - textSize.y - 2.0f;
-            drawList->AddText(ImVec2(nameX, nameY), IM_COL32(255, 255, 255, 255), rect.playerName.c_str());int hp = std::max(0, rect.currentHP);
+            drawList->AddText(ImVec2(nameX, nameY), IM_COL32(255, 215, 0, 255), rect.playerName.c_str());int hp = std::max(0, rect.currentHP);
             float healthPercent = static_cast<float>(hp) / static_cast<float>(rect.maxHP);
-            float barWidth = 5.0f;
+            float barWidth = 3.0f;
             float barHeight = rect.h * healthPercent;
             float barX = rect.x - (barWidth + 3.0f);
             float barY = rect.y + (rect.h - barHeight);

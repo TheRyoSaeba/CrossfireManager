@@ -15,43 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\imgui\imconfig.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\imgui\imgui.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\imgui\imgui_impl_win32.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\imgui\imgui_internal.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\imgui\imstb_rectpack.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\imgui\imstb_textedit.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\imgui\imstb_truetype.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\consts.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\dma.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\HidTable.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\kmbox.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\kmnetlogo.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\xorstr.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="libs\boost\callable_traits\detail\polyfills\disjunction.hpp">
@@ -606,12 +570,6 @@
     <ClInclude Include="CrossfireManager\Memory\dma.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CrossfireManager\Memory\Memory.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CrossfireManager\Memory\Shellcode.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="CrossfireManager\offsets.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -657,7 +615,7 @@
     <ClInclude Include="Include\vmmdll.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CrossfireManager\Triggerbot\Triggerbot.h">
+    <ClInclude Include="CrossfireManager\Aimbot\Aimbot.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CrossfireManager\UI\FTXUI.hpp">
@@ -666,31 +624,82 @@
     <ClInclude Include="CrossfireManager\ESP\ESPManager.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CrossfireManager\Memory\InputManager.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CrossfireManager\Memory\Registry.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\imgui\imgui_impl_dx11.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\socket.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\window.h">
+    <ClInclude Include="CrossfireManager\Template\Cache.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Aimbot\AimHelpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\imgui\imconfig.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\imgui\imgui.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\imgui\imgui_impl_dx11.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\imgui\imgui_impl_win32.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\imgui\imgui_internal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\imgui\imstb_rectpack.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\imgui\imstb_textedit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\imgui\imstb_truetype.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\consts.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\HidTable.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\InputManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\KMBOX.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\KmboxB.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\kmnetlogo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\Memory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\my_enc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\Registry.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\Shellcode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CrossfireManager\Memory\structs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CrossfireManager\Memory\window.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="CrossfireManager\Memory\xorstr.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CrossfireManager\Template\Cache.h">
+    <ClInclude Include="CrossfireManager\Template\CacheManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -732,49 +741,55 @@
     <ClCompile Include="CrossfireManager\CF.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CrossfireManager\Memory\Memory.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="CrossfireManager\Memory\Shellcode.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="CrossfireManager\Triggerbot\Triggerbot.cpp">
+    <ClCompile Include="CrossfireManager\Aimbot\Aimbot.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CrossfireManager\UI\FTXUI.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CrossfireManager\ESP\ESPManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CrossfireManager\Memory\imgui\imgui.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CrossfireManager\Memory\imgui\imgui_demo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CrossfireManager\Memory\imgui\imgui_draw.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CrossfireManager\Memory\imgui\imgui_impl_dx11.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CrossfireManager\Memory\imgui\imgui_impl_win32.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CrossfireManager\Memory\imgui\imgui_tables.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CrossfireManager\Memory\imgui\imgui_widgets.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="CrossfireManager\Memory\InputManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CrossfireManager\Memory\Memory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CrossfireManager\Memory\my_enc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CrossfireManager\Memory\pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CrossfireManager\Memory\Registry.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\imgui\imgui.cpp">
+    <ClCompile Include="CrossfireManager\Memory\Shellcode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\imgui\imgui_demo.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\imgui_draw.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\imgui_impl_dx11.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\imgui_impl_win32.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\imgui_tables.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\imgui\imgui_widgets.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\window.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="CrossfireManager\ESP\ESPManager.cpp">
+    <ClCompile Include="CrossfireManager\Memory\window.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

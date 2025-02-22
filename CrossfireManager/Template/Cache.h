@@ -1,114 +1,247 @@
-#ifndef CACHE_H
-#define CACHE_H
+#pragma once
 
-#include <vector>
+#include "Classes.h"
+#include "Memory.h"
 #include "offsets.h"
 #include <array>
+#include <vector>
 #include <mutex>
 #include <chrono>
-#include <Classes.h> 
-#include "Memory.h"   
-#include <cstddef> 
-#include <d3dx9math.h> 
+#include <d3dx9math.h>
+#include <cstddef>
 
 namespace ESP {
+
     constexpr int MAX_PLAYERS = 16;
 
-    struct Cache {
+    struct MinimalPlayerData {
+        void* hObject;
+        int Team;
+        int Health;
+        char Name[14];
+        D3DXVECTOR3 HeadPos;
+        D3DXVECTOR3 FootPos;
+        D3DXVECTOR3 AbsPos;
+        bool IsDead;
+    };
 
-        std::shared_ptr<KLASSES::LTClientShell> clientShell;
-        std::shared_ptr<KLASSES::pPlayer> localPlayer;
-        std::vector<std::shared_ptr<KLASSES::pPlayer>> players;
-        std::array<std::shared_ptr<D3DXVECTOR3>, MAX_PLAYERS> headPositions;
-        std::array<std::shared_ptr<D3DXVECTOR3>, MAX_PLAYERS> footPositions;
-        std::array<std::shared_ptr<int8_t>, MAX_PLAYERS> isDeadFlags;
+    struct Snapshot {
+        D3DXVECTOR3 localAbsPos;
+        D3DXVECTOR3 localHeadPos;
+        std::vector<MinimalPlayerData> enemies;
+    };
 
-        std::chrono::steady_clock::time_point lastCacheUpdate;
-        mutable std::mutex cacheMutex;
-
-        Cache() {
-            clientShell = std::make_shared<KLASSES::LTClientShell>();
-            localPlayer = std::make_shared<KLASSES::pPlayer>();
-            players.reserve(MAX_PLAYERS);
-            for (int i = 0; i < MAX_PLAYERS; ++i) {
-                players.emplace_back(std::make_shared<KLASSES::pPlayer>());
-                headPositions[i] = std::make_shared<D3DXVECTOR3>();
-                footPositions[i] = std::make_shared<D3DXVECTOR3>();
-                isDeadFlags[i] = std::make_shared<int8_t>(0);
-            }
-            lastCacheUpdate = std::chrono::steady_clock::now();
+    class Cache {
+    public:
+        Cache() : m_scatterHandle(nullptr) {
+            Clear();
         }
 
-        bool UpdateClientShell(Memory& mem, uintptr_t LT_SHELL) {
-            std::lock_guard<std::mutex> lock(cacheMutex);
-            return mem.Read(LT_SHELL, clientShell.get(), sizeof(KLASSES::LTClientShell));
-        }
+        ~Cache() {
+            if (m_scatterHandle) {
 
-        void UpdateLocalPlayer(Memory& mem) {
-            std::lock_guard<std::mutex> lock(cacheMutex);
-            *localPlayer = clientShell->GetLocalPlayer(mem);
-        }
-
-        void UpdatePlayers(Memory& mem) {
-            std::lock_guard<std::mutex> lock(cacheMutex);
-            for (int i = 0; i < MAX_PLAYERS; ++i) {
-                *players[i] = clientShell->GetPlayerByIndex(i);
+                m_scatterHandle = nullptr;
             }
         }
 
-        void UpdatePlayerData(Memory& mem, VMMDLL_SCATTER_HANDLE scatterHandle) {
-            std::lock_guard<std::mutex> lock(cacheMutex);
-            for (int i = 0; i < MAX_PLAYERS; ++i) {
-                const auto& p = players[i];
-                if (!p->hObject || p->Team == localPlayer->Team || p->ClientID == localPlayer->ClientID)
-                    continue;
+        bool Update(Memory& mem) {
+            std::lock_guard<std::mutex> lock(m_mutex);
 
-                uintptr_t playerAddr = reinterpret_cast<uintptr_t>(p->hObject);
-                mem.AddScatterReadRequest(
-                    scatterHandle,
-                    playerAddr + offsetof(KLASSES::obj, Head),
-                    headPositions[i].get(),
-                    sizeof(D3DXVECTOR3)
-                );
-                mem.AddScatterReadRequest(
-                    scatterHandle,
-                    playerAddr + offsetof(KLASSES::obj, foot),
-                    footPositions[i].get(),
-                    sizeof(D3DXVECTOR3)
-                );
-                mem.AddScatterReadRequest(
-                    scatterHandle,
-                    reinterpret_cast<uintptr_t>(p->characFX) + offsetof(KLASSES::pCharacterFx, isDead),
-                    isDeadFlags[i].get(),
-                    sizeof(int8_t)
-                );
+            if (!ClientUpdate(mem)) {
+                return false;
             }
+
+            if (!UpdateLocalPlayer(mem)) {
+                return false;
+            }
+
+            UpdateEntities(mem);
+
+            if (!UpdatePositions(mem)) {
+                return false;
+            }
+
+            m_lastUpdate = std::chrono::steady_clock::now();
+
+            return true;
+        }
+
+        Snapshot GetSnapshot() const {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            Snapshot snap;
+            snap.localAbsPos = m_localAbsolutePosition;
+            snap.localHeadPos = m_localHeadPosition;
+            snap.enemies = m_minimalPlayers;
+            return snap;
         }
 
         void Clear() {
-            std::lock_guard<std::mutex> lock(cacheMutex);
-            clientShell.reset();
-            localPlayer.reset();
-            players.clear();
-            headPositions.fill(nullptr);
-            footPositions.fill(nullptr);
-            isDeadFlags.fill(nullptr);
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_clientShell = KLASSES::LTClientShell{};
+            m_localPlayer = KLASSES::pPlayer{};
+            m_localAbsolutePosition = D3DXVECTOR3{};
+            m_localHeadPosition = D3DXVECTOR3{};
+            m_players.fill(KLASSES::pPlayer{});
+            m_headPositions.fill(D3DXVECTOR3{});
+            m_footPositions.fill(D3DXVECTOR3{});
+            m_absolutePositions.fill(D3DXVECTOR3{});
+            m_isDeadFlags.fill(0);
+            m_minimalPlayers.clear();
+             
+            m_lastUpdate = std::chrono::steady_clock::now();
+            m_lastEntityUpdate = std::chrono::steady_clock::now();
         }
 
-        bool IsValid() const {
-            return clientShell != nullptr && localPlayer != nullptr;
+    private:
+        mutable std::mutex m_mutex;
+        std::chrono::steady_clock::time_point m_lastEntityUpdate;
+        static constexpr std::chrono::milliseconds ENTITY_UPDATE_INTERVAL{ 5000 };  
+        KLASSES::LTClientShell m_clientShell;
+        KLASSES::pPlayer m_localPlayer;
+        D3DXVECTOR3 m_localAbsolutePosition;
+        D3DXVECTOR3 m_localHeadPosition;
+
+        std::array<KLASSES::pPlayer, MAX_PLAYERS> m_players;
+        std::array<D3DXVECTOR3, MAX_PLAYERS> m_headPositions;
+        std::array<D3DXVECTOR3, MAX_PLAYERS> m_footPositions;
+        std::array<D3DXVECTOR3, MAX_PLAYERS> m_absolutePositions;
+        std::array<int8_t, MAX_PLAYERS> m_isDeadFlags;
+        std::vector<MinimalPlayerData> m_minimalPlayers;
+
+        std::chrono::steady_clock::time_point m_lastUpdate;
+
+        VMMDLL_SCATTER_HANDLE m_scatterHandle;
+
+        bool ClientUpdate(Memory& mem) {
+            auto startTime = std::chrono::steady_clock::now();
+            if (!mem.Read(LT_SHELL, &m_clientShell, sizeof(KLASSES::LTClientShell))) {
+                return false;
+            }
+            return true;
+             
         }
 
-        void UpdateTimestamp() {
-            std::lock_guard<std::mutex> lock(cacheMutex);
-            lastCacheUpdate = std::chrono::steady_clock::now();
+        bool UpdateLocalPlayer(Memory& mem) {
+            
+            m_localPlayer = m_clientShell.GetLocalPlayer(mem);
+            if (m_localPlayer.hObject != nullptr) {
+                m_localAbsolutePosition = mem.Read<D3DXVECTOR3>(
+                    reinterpret_cast<uintptr_t>(m_localPlayer.hObject) +
+                    offsetof(KLASSES::obj, AbsolutePosition));
+                m_localHeadPosition = mem.Read<D3DXVECTOR3>(
+                    reinterpret_cast<uintptr_t>(m_localPlayer.hObject) +
+                    offsetof(KLASSES::obj, Head));
+                return true;
+            }
+            return false;
+            
+
+           
         }
 
-        auto GetTimeSinceLastUpdate() const {
-            std::lock_guard<std::mutex> lock(cacheMutex);
-            return std::chrono::steady_clock::now() - lastCacheUpdate;
+        void UpdateEntities(Memory& mem) {
+            auto startTime = std::chrono::steady_clock::now();
+            auto now = std::chrono::steady_clock::now();
+            if (now - m_lastEntityUpdate < ENTITY_UPDATE_INTERVAL) {
+                return;
+            }
+
+            uintptr_t ENTITY_BASE = LT_SHELL + offs::dwCPlayerStart;
+            size_t bytesToRead = sizeof(KLASSES::pPlayer) * MAX_PLAYERS;
+
+            std::array<KLASSES::pPlayer, MAX_PLAYERS> tempPlayers;
+
+            if (mem.Read(ENTITY_BASE, tempPlayers.data(), bytesToRead)) {
+                
+                m_players = tempPlayers;
+                m_lastEntityUpdate = now;
+                KLASSES::Utils::DebugLog("[Cache] Bulk UpdateEntities completed in a single read.");
+            }
+            else {
+                KLASSES::Utils::DebugLog("[Cache] UpdateEntities bulk read failed.");
+            }
+            auto endTime = std::chrono::steady_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+            KLASSES::Utils::DebugLog("[CacheManager] Update took %lld ms", duration);
+        }
+        
+
+        bool UpdatePositions(Memory& mem) {
+            
+            std::array<D3DXVECTOR3, MAX_PLAYERS> tempHeadPositions;
+            std::array<D3DXVECTOR3, MAX_PLAYERS> tempFootPositions;
+            std::array<D3DXVECTOR3, MAX_PLAYERS> tempAbsolutePositions;
+            std::array<int8_t, MAX_PLAYERS> tempIsDeadFlags{};
+
+            if (!m_scatterHandle) {
+                m_scatterHandle = mem.CreateScatterHandle();
+                if (!m_scatterHandle)
+                    return false;
+            }
+
+            for (int i = 0; i < MAX_PLAYERS; ++i) {
+                const auto& p = m_players[i];
+
+                if (!p.hObject || p.Team == m_localPlayer.Team || p.ClientID == m_localPlayer.ClientID)
+                    continue;
+
+                uintptr_t playerAddr = reinterpret_cast<uintptr_t>(p.hObject);
+                mem.AddScatterReadRequest(
+                    m_scatterHandle,
+                    playerAddr + offsetof(KLASSES::obj, Head),
+                    &tempHeadPositions[i],
+                    sizeof(D3DXVECTOR3)
+                );
+                mem.AddScatterReadRequest(
+                    m_scatterHandle,
+                    playerAddr + offsetof(KLASSES::obj, foot),
+                    &tempFootPositions[i],
+                    sizeof(D3DXVECTOR3)
+                );
+                mem.AddScatterReadRequest(
+                    m_scatterHandle,
+                    playerAddr + offsetof(KLASSES::obj, AbsolutePosition),
+                    &tempAbsolutePositions[i],
+                    sizeof(D3DXVECTOR3)
+                );
+                mem.AddScatterReadRequest(
+                    m_scatterHandle,
+                    reinterpret_cast<uintptr_t>(p.characFX) + offsetof(KLASSES::pCharacterFx, isDead),
+                    &tempIsDeadFlags[i],
+                    sizeof(int8_t)
+                );
+            }
+
+            mem.ExecuteReadScatter(m_scatterHandle);
+
+            m_headPositions = tempHeadPositions;
+            m_footPositions = tempFootPositions;
+            m_absolutePositions = tempAbsolutePositions;
+            m_isDeadFlags = tempIsDeadFlags;
+
+            m_minimalPlayers.clear();
+            m_minimalPlayers.reserve(MAX_PLAYERS);
+            for (int i = 0; i < MAX_PLAYERS; ++i) {
+                const auto& p = m_players[i];
+                if (!p.hObject || p.Team == m_localPlayer.Team)
+                    continue;
+
+                MinimalPlayerData mpd;
+                mpd.hObject = p.hObject;
+                mpd.Team = p.Team;
+                mpd.Health = p.Health;
+                
+                memcpy(mpd.Name, p.Name, sizeof(mpd.Name));
+                mpd.HeadPos = m_headPositions[i];
+                mpd.FootPos = m_footPositions[i];
+                mpd.AbsPos = m_absolutePositions[i];
+                mpd.IsDead = (m_isDeadFlags[i] != 0);
+
+                m_minimalPlayers.push_back(mpd);
+                 
+                 
+            }
+            return true;
         }
     };
 }
-
-#endif 

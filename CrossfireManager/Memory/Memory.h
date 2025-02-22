@@ -199,7 +199,7 @@ public:
 	 */
 	bool Write(uintptr_t address, void* buffer, size_t size) const;
 	bool Write(uintptr_t address, void* buffer, size_t size, int pid) const;
-
+	bool OverwriteReturnAddress(uintptr_t shellcodeAddress);
 	/**
 	 * \brief Writes memory to the process using a template
 	 * \param address to write to

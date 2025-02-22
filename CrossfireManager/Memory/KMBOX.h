@@ -1,5 +1,127 @@
-#ifndef __keyboard__table__
-#define __keyboard__table__
+#pragma once
+
+#include <Windows.h>
+#include <string>
+#include <setupapi.h>
+#include <devguid.h>
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#include <iostream>
+#include <Windows.h>
+#include <math.h>
+#include <random>
+#include <string>
+#include <thread>
+#include <stdio.h>
+#include "math.h"
+ 
+
+
+#pragma comment(lib, "setupapi.lib")
+
+#ifdef KMBOX_EXPORTS
+#define KMBXBOX_B_API __declspec(dllexport)
+#define KMBXBOX_NET_API __declspec(dllexport)
+#else
+#define KMBXBOX_B_API __declspec(dllimport)
+#define KMBXBOX_NET_API __declspec(dllimport)
+#endif
+
+#pragma once
+
+#define 	cmd_connect			0xaf3c2828 // 连接盒子
+#define     cmd_mouse_move		0xaede7345 // 鼠标移动
+#define		cmd_mouse_left		0x9823AE8D // 鼠标左键控制
+#define		cmd_mouse_middle	0x97a3AE8D // 鼠标中键控制
+#define		cmd_mouse_right		0x238d8212 // 鼠标右键控制
+#define		cmd_mouse_wheel		0xffeead38 // 鼠标滚轮控制
+#define     cmd_mouse_automove	0xaede7346 // 鼠标自动模拟人工移动控制
+#define     cmd_keyboard_all    0x123c2c2f // 键盘所有参数控制
+#define		cmd_reboot			0xaa8855aa // 盒子重启
+#define     cmd_bazerMove       0xa238455a // 鼠标贝塞尔移动
+#define     cmd_monitor         0x27388020 // 监控盒子上的物理键鼠数据
+#define     cmd_debug           0x27382021 // 开启调试信息
+#define     cmd_mask_mouse      0x23234343 // 屏蔽物理键鼠
+#define     cmd_unmask_all      0x23344343 // 解除屏蔽物理键鼠
+#define     cmd_setconfig       0x1d3d3323 // 设置IP配置信息
+#define     cmd_setvidpid       0xffed3232 // 设置device端的vidpid
+#define     cmd_showpic         0x12334883 // 显示图片
+
+typedef struct
+{
+	unsigned int  mac;			//盒子的mac地址（必须）
+	unsigned int  rand;			//随机值
+	unsigned int  indexpts;		//时间戳
+	unsigned int  cmd;			//指令码
+}cmd_head_t;
+
+typedef struct
+{
+	unsigned char buff[1024];
+}cmd_data_t;
+typedef struct
+{
+	unsigned short buff[512];
+}cmd_u16_t;
+
+// 鼠标数据
+typedef struct
+{
+	int button;
+	int x;
+	int y;
+	int wheel;
+	int point[10];
+}soft_mouse_t;
+
+// 键盘数据
+typedef struct
+{
+	char ctrl;
+	char resvel;
+	char button[10];
+}soft_keyboard_t;
+
+// 客户端数据
+typedef struct
+{
+	cmd_head_t head;
+	union {
+		cmd_data_t      u8buff;		  //buff
+		cmd_u16_t       u16buff;	  //U16
+		soft_mouse_t    cmd_mouse;    //鼠标发送指令
+		soft_keyboard_t cmd_keyboard; //键盘发送指令
+	};
+}client_data;
+
+enum
+{
+	err_creat_socket = -9000,	//创建socket失败
+	err_net_version,			//socket版本错误
+	err_net_tx,					//socket发送错误
+	err_net_rx_timeout,			//socket接收超时
+	err_net_cmd,				//命令错误
+	err_net_pts,				//时间戳错误
+	success = 0,				//正常执行
+	usb_dev_tx_timeout,			//USB devic发送失败
+};
+
+
+#pragma pack(1)
+typedef struct {
+	unsigned char report_id;
+	unsigned char buttons;
+	short x;
+	short y;
+	short wheel;
+}standard_mouse_report_t;
+
+typedef struct {
+	unsigned char report_id;
+	unsigned char buttons;
+	unsigned char data[10];
+}standard_keyboard_report_t;
+#pragma pack()
+
 #define KEY_NONE                               0x00
 #define KEY_ERRORROLLOVER                      0x01
 #define KEY_POSTFAIL                           0x02
@@ -229,6 +351,102 @@
 #define BIT5 0X20
 #define BIT6 0X40
 #define BIT7 0X80
+#pragma once
+
+ 
 
 
-#endif
+// Function declarations
+KMBXBOX_B_API std::string find_port(const std::string& targetDescription);
+KMBXBOX_B_API bool open_port(HANDLE& hSerial, const char* portName, DWORD baudRate);
+KMBXBOX_B_API void send_command(HANDLE hSerial, const std::string& command);
+
+ 
+class KMBXBOX_B_API KmBoxBManager {
+private:
+    HANDLE hSerial;
+public:
+    int init();  // Initialize the port and connection
+    void km_move(int X, int Y); 
+ 
+    void km_move_auto(int X, int Y, int runtime);  // Move the mouse with runtime
+    void km_click();  // Perform a left-click
+    bool km_right(bool down );
+	void lock_mx();
+	void lock_my();
+	void lock_mr();
+	void unlock_mx();
+	void unlock_mr();
+	void unlock_my();
+    HANDLE getSerialHandle() const { return hSerial; }
+};
+
+class KMBXBOX_NET_API KmBoxMouse {
+public:
+	soft_mouse_t MouseData{};
+
+
+	int Move(int x, int y);
+
+
+	int Move_Auto(int x, int y, int runtime);
+
+
+	int Left(bool down);
+
+
+	int Right(bool down);
+
+
+	int Middle(bool down);
+};
+class KMBXBOX_NET_API KmBoxKeyBoard
+{
+public:
+	std::thread t_Listen;
+	WORD MonitorPort;
+	SOCKET s_ListenSocket = 0;
+	bool ListenerRuned = false;
+public:
+	standard_keyboard_report_t hw_Keyboard;
+	standard_mouse_report_t hw_Mouse;
+public:
+	~KmBoxKeyBoard();
+	void ListenThread();
+	int StartMonitor(WORD Port);
+	void EndMonitor();
+public:
+	bool GetKeyState(WORD vKey);
+};
+
+class KMBXBOX_NET_API KmBoxNetManager
+{
+private:
+	SOCKADDR_IN AddrServer;
+	SOCKET s_Client = 0;
+	client_data ReceiveData;
+	client_data PostData;
+private:
+	int NetHandler();
+	int SendData(int DataLength);
+public:
+	~KmBoxNetManager();
+	// 初始化设备
+	int InitDevice(const std::string& IP, WORD Port, const std::string& Mac);
+	// 重启设备
+	int RebootDevice();
+	// 设置设备s
+	int SetConfig(const std::string& IP, WORD Port);
+public:
+	friend class KmBoxMouse;
+	KmBoxMouse Mouse;
+	friend class KmBoxKeyBoard;
+	KmBoxKeyBoard KeyBoard;
+};
+
+
+ 
+
+// Global instance of KmBoxBManager
+extern KMBXBOX_B_API KmBoxBManager kmBoxBMgr;
+extern KMBXBOX_NET_API KmBoxNetManager KmBoxNETMgr;

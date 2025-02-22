@@ -3,6 +3,9 @@
 #include "pch.h"
 #include <thread>
 #include <iostream>
+#include <windows.h>
+#include <tlhelp32.h>
+#include <Classes.h>
 
 Memory::Memory()
 {
@@ -707,7 +710,7 @@ bool Memory::Write(uintptr_t address, void* buffer, size_t size, int pid) const
 bool Memory::Read(uintptr_t address, void* buffer, size_t size) const
 {
 	DWORD read_size = 0;
-	if (!VMMDLL_MemReadEx(this->vHandle, current_process.PID, address, static_cast<PBYTE>(buffer), size, &read_size, VMMDLL_FLAG_NOCACHE))
+	if (!VMMDLL_MemReadEx(this->vHandle, current_process.PID, address, static_cast<PBYTE>(buffer), size, &read_size, VMMDLL_FLAG_NOCACHE |VMMDLL_FLAG_NOPAGING))
 	{
 	 
 		return false;
@@ -727,9 +730,94 @@ bool Memory::Read(uintptr_t address, void* buffer, size_t size, int pid) const
 	return (read_size == size);
 }
 
+
+bool Memory::OverwriteReturnAddress(uintptr_t shellcodeAddress)
+{
+
+	DWORD processId = this->GetPidFromName("crossfire.exe");
+	if (!processId) {
+		KLASSES::Utils::DebugLog("[!] Failed to get process ID for crossfire.exe");
+		return false;
+	}
+
+	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+	if (hSnapshot == INVALID_HANDLE_VALUE) {
+		KLASSES::Utils::DebugLog("[!] Failed to get thread snapshot");
+		return false;
+	}
+
+	THREADENTRY32 threadEntry;
+	threadEntry.dwSize = sizeof(THREADENTRY32);
+
+	std::vector<DWORD> threadIds;
+	if (Thread32First(hSnapshot, &threadEntry)) {
+		do {
+			if (threadEntry.th32OwnerProcessID == processId) {
+				threadIds.push_back(threadEntry.th32ThreadID);
+			}
+		} while (Thread32Next(hSnapshot, &threadEntry));
+	}
+	CloseHandle(hSnapshot);
+
+	if (threadIds.empty()) {
+		KLASSES::Utils::DebugLog("[!] No threads found for crossfire.exe");
+		return false;
+	}
+
+	uintptr_t baseAddress = this->GetBaseDaddy("crossfire.exe");
+	uintptr_t size = this->GetBaseSize("crossfire.exe");
+
+	for (DWORD threadId : threadIds) {
+		HANDLE hThread = OpenThread(THREAD_GET_CONTEXT | THREAD_SUSPEND_RESUME, FALSE, threadId);
+		if (!hThread) continue;
+
+		SuspendThread(hThread);
+
+		CONTEXT ctx;
+		ctx.ContextFlags = CONTEXT_CONTROL;
+		if (!GetThreadContext(hThread, &ctx)) {
+			ResumeThread(hThread);
+			CloseHandle(hThread);
+			continue;
+		}
+
+		if (ctx.Rip < baseAddress || ctx.Rip >(baseAddress + size)) {
+			ResumeThread(hThread);
+			CloseHandle(hThread);
+			continue;
+		}
+
+		uintptr_t stackPointer = ctx.Rsp;
+		uintptr_t stackLimit = stackPointer - 0x80000;
+
+		for (uintptr_t addr = stackLimit; addr < stackPointer; addr += sizeof(uintptr_t)) {
+			uintptr_t retAddr = this->Read<uintptr_t>(addr);
+
+			KLASSES::Utils::DebugLog("[THREAD: %d] Scanning Stack Address: 0x%llX | Return Address: 0x%llX", threadId, addr, retAddr);
+
+			if (retAddr >= baseAddress && retAddr < (baseAddress + size)) {
+
+				if (this->Write(addr, &shellcodeAddress, sizeof(shellcodeAddress))) {
+					KLASSES::Utils::DebugLog("[+] Overwritten return address at 0x%llX in thread %d", addr, threadId);
+					ResumeThread(hThread);
+					CloseHandle(hThread);
+					return true;
+				}
+			}
+		}
+
+		ResumeThread(hThread);
+		CloseHandle(hThread);
+	}
+
+	KLASSES::Utils::DebugLog("[!] No valid return address found in any thread.");
+	return false;
+}
+ 
+
 VMMDLL_SCATTER_HANDLE Memory::CreateScatterHandle() const
 {
-	const VMMDLL_SCATTER_HANDLE ScatterHandle = VMMDLL_Scatter_Initialize(this->vHandle, current_process.PID, VMMDLL_FLAG_NOCACHE);
+	const VMMDLL_SCATTER_HANDLE ScatterHandle = VMMDLL_Scatter_Initialize(this->vHandle, current_process.PID, VMMDLL_FLAG_NOCACHE |VMMDLL_FLAG_NOPAGING);
 	if (!ScatterHandle)
 		LOG("[!] Failed to create scatter handle\n");
 	return ScatterHandle;

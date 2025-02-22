@@ -99,14 +99,14 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\FTXUI\include;C:\Users\askmo\source\repos\CrossfireManager\src;C:\Users\askmo\source\repos\CrossfireManager\src\imgui;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\UI;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Triggerbot;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\ESP;C:\Users\askmo\source\repos\CrossfireManager\ImGui;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\include;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\include\ftxui\component;C:\Users\askmo\source\repos\CrossfireManager\Include;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\build\Release;C:\Users\askmo\source\repos\CrossfireManager\libs;C:\Users\askmo\source\repos\CrossfireManager\FTXUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Template;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\FTXUI\include;C:\Users\askmo\source\repos\CrossfireManager\src;C:\Users\askmo\source\repos\CrossfireManager\src\imgui;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\UI;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Aimbot;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\ESP;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory\imgui;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\include;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\include\ftxui\component;C:\Users\askmo\source\repos\CrossfireManager\Include;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\build\Release;C:\Users\askmo\source\repos\CrossfireManager\libs;C:\Users\askmo\source\repos\CrossfireManager\FTXUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalUsingDirectories>C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory;%(AdditionalUsingDirectories)</AdditionalUsingDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>ftxui-dom.lib;ftxui-component.lib;ftxui-screen.lib;leechcore.lib;vmm.lib;FTD3XX.lib;d3d11.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ftxui-dom.lib;ftxui-component.lib;ftxui-screen.lib;leechcore.lib;vmm.lib;FTD3XX.lib;d3d11.lib;MYKMBOX.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\FTXUI\build\Release;C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Lib\x64;C:\Users\askmo\source\repos\CrossfireManager\libs;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\build;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\build\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <StackReserveSize>33554432</StackReserveSize>
     </Link>
@@ -121,7 +121,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\FTXUI\include;C:\Users\askmo\source\repos\CrossfireManager\src;C:\Users\askmo\source\repos\CrossfireManager\src\imgui;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\UI;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Triggerbot;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\ESP;C:\Users\askmo\source\repos\CrossfireManager\ImGui;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\include;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\include\ftxui\component;C:\Users\askmo\source\repos\CrossfireManager\Include;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\build\Release;C:\Users\askmo\source\repos\CrossfireManager\libs;C:\Users\askmo\source\repos\CrossfireManager\FTXUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Template;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\FTXUI\include;C:\Users\askmo\source\repos\CrossfireManager\src;C:\Users\askmo\source\repos\CrossfireManager\src\imgui;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\UI;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Aimbot;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\ESP;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory\imgui;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\include;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\include\ftxui\component;C:\Users\askmo\source\repos\CrossfireManager\Include;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\build\Release;C:\Users\askmo\source\repos\CrossfireManager\libs;C:\Users\askmo\source\repos\CrossfireManager\FTXUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalUsingDirectories>C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory;%(AdditionalUsingDirectories)</AdditionalUsingDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
@@ -130,7 +130,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>ftxui-dom.lib;ftxui-component.lib;ftxui-screen.lib;leechcore.lib;vmm.lib;FTD3XX.lib;d3d11.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ftxui-dom.lib;ftxui-component.lib;ftxui-screen.lib;leechcore.lib;vmm.lib;FTD3XX.lib;d3d11.lib;MYKMBOX.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\FTXUI\build\Release;C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Lib\x64;C:\Users\askmo\source\repos\CrossfireManager\libs;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\build;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\build\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <StackReserveSize>33554432</StackReserveSize>
     </Link>
@@ -143,14 +143,14 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\FTXUI\include;C:\Users\askmo\source\repos\CrossfireManager\src;C:\Users\askmo\source\repos\CrossfireManager\src\imgui;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\UI;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Triggerbot;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\ESP;C:\Users\askmo\source\repos\CrossfireManager\ImGui;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\include;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\include\ftxui\component;C:\Users\askmo\source\repos\CrossfireManager\Include;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\build\Release;C:\Users\askmo\source\repos\CrossfireManager\libs;C:\Users\askmo\source\repos\CrossfireManager\FTXUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Template;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\FTXUI\include;C:\Users\askmo\source\repos\CrossfireManager\src;C:\Users\askmo\source\repos\CrossfireManager\src\imgui;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\UI;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Aimbot;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\ESP;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory\imgui;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\include;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\include\ftxui\component;C:\Users\askmo\source\repos\CrossfireManager\Include;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\build\Release;C:\Users\askmo\source\repos\CrossfireManager\libs;C:\Users\askmo\source\repos\CrossfireManager\FTXUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalUsingDirectories>C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory;%(AdditionalUsingDirectories)</AdditionalUsingDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>ftxui-dom.lib;ftxui-component.lib;ftxui-screen.lib;leechcore.lib;vmm.lib;FTD3XX.lib;d3d11.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ftxui-dom.lib;ftxui-component.lib;ftxui-screen.lib;leechcore.lib;vmm.lib;FTD3XX.lib;d3d11.lib;MYKMBOX.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\FTXUI\build\Release;C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Lib\x64;C:\Users\askmo\source\repos\CrossfireManager\libs;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\build;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\build\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <StackReserveSize>33554432</StackReserveSize>
     </Link>
@@ -165,7 +165,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\FTXUI\include;C:\Users\askmo\source\repos\CrossfireManager\src;C:\Users\askmo\source\repos\CrossfireManager\src\imgui;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\UI;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Triggerbot;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\ESP;C:\Users\askmo\source\repos\CrossfireManager\ImGui;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\include;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\include\ftxui\component;C:\Users\askmo\source\repos\CrossfireManager\Include;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\build\Release;C:\Users\askmo\source\repos\CrossfireManager\libs;C:\Users\askmo\source\repos\CrossfireManager\FTXUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Template;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\FTXUI\include;C:\Users\askmo\source\repos\CrossfireManager\src;C:\Users\askmo\source\repos\CrossfireManager\src\imgui;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\UI;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Aimbot;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\ESP;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory\imgui;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\include;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\include\ftxui\component;C:\Users\askmo\source\repos\CrossfireManager\Include;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\build\Release;C:\Users\askmo\source\repos\CrossfireManager\libs;C:\Users\askmo\source\repos\CrossfireManager\FTXUI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalUsingDirectories>C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory;%(AdditionalUsingDirectories)</AdditionalUsingDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
@@ -174,7 +174,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>ftxui-dom.lib;ftxui-component.lib;ftxui-screen.lib;leechcore.lib;vmm.lib;FTD3XX.lib;d3d11.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ftxui-dom.lib;ftxui-component.lib;ftxui-screen.lib;leechcore.lib;vmm.lib;FTD3XX.lib;d3d11.lib;MYKMBOX.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\FTXUI\build\Release;C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Lib\x64;C:\Users\askmo\source\repos\CrossfireManager\libs;C:\Users\askmo\source\repos\CrossfireManager\CrossfireManager\Memory;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\build;C:\Users\askmo\source\repos\CrossfireManager\FTXUI\build\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <StackReserveSize>33554432</StackReserveSize>
     </Link>
@@ -182,35 +182,54 @@
   <ItemGroup>
     <ClCompile Include="CrossfireManager\CF.cpp" />
     <ClCompile Include="CrossfireManager\ESP\ESPManager.cpp" />
+    <ClCompile Include="CrossfireManager\Aimbot\Aimbot.cpp" />
+    <ClCompile Include="CrossfireManager\Memory\imgui\imgui.cpp" />
+    <ClCompile Include="CrossfireManager\Memory\imgui\imgui_demo.cpp" />
+    <ClCompile Include="CrossfireManager\Memory\imgui\imgui_draw.cpp" />
+    <ClCompile Include="CrossfireManager\Memory\imgui\imgui_impl_dx11.cpp" />
+    <ClCompile Include="CrossfireManager\Memory\imgui\imgui_impl_win32.cpp" />
+    <ClCompile Include="CrossfireManager\Memory\imgui\imgui_tables.cpp" />
+    <ClCompile Include="CrossfireManager\Memory\imgui\imgui_widgets.cpp" />
     <ClCompile Include="CrossfireManager\Memory\InputManager.cpp" />
     <ClCompile Include="CrossfireManager\Memory\Memory.cpp" />
+    <ClCompile Include="CrossfireManager\Memory\my_enc.cpp" />
+    <ClCompile Include="CrossfireManager\Memory\pch.cpp" />
     <ClCompile Include="CrossfireManager\Memory\Registry.cpp" />
     <ClCompile Include="CrossfireManager\Memory\Shellcode.cpp" />
-    <ClCompile Include="CrossfireManager\Triggerbot\Triggerbot.cpp" />
+    <ClCompile Include="CrossfireManager\Memory\window.cpp" />
     <ClCompile Include="CrossfireManager\UI\FTXUI.cpp" />
-    <ClCompile Include="src\imgui\imgui.cpp" />
-    <ClCompile Include="src\imgui\imgui_demo.cpp" />
-    <ClCompile Include="src\imgui\imgui_draw.cpp" />
-    <ClCompile Include="src\imgui\imgui_impl_dx11.cpp" />
-    <ClCompile Include="src\imgui\imgui_impl_win32.cpp" />
-    <ClCompile Include="src\imgui\imgui_tables.cpp" />
-    <ClCompile Include="src\imgui\imgui_widgets.cpp" />
-    <ClCompile Include="src\window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CrossfireManager\Aimbot\AimHelpers.h" />
     <ClInclude Include="CrossfireManager\Classes.h" />
     <ClInclude Include="CrossfireManager\ESP\ESPManager.hpp" />
+    <ClInclude Include="CrossfireManager\Memory\consts.h" />
     <ClInclude Include="CrossfireManager\Memory\dma.h" />
+    <ClInclude Include="CrossfireManager\Memory\HidTable.h" />
+    <ClInclude Include="CrossfireManager\Memory\imgui\imconfig.h" />
+    <ClInclude Include="CrossfireManager\Memory\imgui\imgui.h" />
+    <ClInclude Include="CrossfireManager\Memory\imgui\imgui_impl_dx11.h" />
+    <ClInclude Include="CrossfireManager\Memory\imgui\imgui_impl_win32.h" />
+    <ClInclude Include="CrossfireManager\Memory\imgui\imgui_internal.h" />
+    <ClInclude Include="CrossfireManager\Memory\imgui\imstb_rectpack.h" />
+    <ClInclude Include="CrossfireManager\Memory\imgui\imstb_textedit.h" />
+    <ClInclude Include="CrossfireManager\Memory\imgui\imstb_truetype.h" />
     <ClInclude Include="CrossfireManager\Memory\InputManager.h" />
+    <ClInclude Include="CrossfireManager\Memory\KMBOX.h" />
+    <ClInclude Include="CrossfireManager\Memory\KmboxB.h" />
+    <ClInclude Include="CrossfireManager\Memory\kmnetlogo.h" />
     <ClInclude Include="CrossfireManager\Memory\Memory.h" />
+    <ClInclude Include="CrossfireManager\Memory\my_enc.h" />
     <ClInclude Include="CrossfireManager\Memory\Registry.h" />
     <ClInclude Include="CrossfireManager\Memory\Shellcode.h" />
     <ClInclude Include="CrossfireManager\Memory\structs.h" />
+    <ClInclude Include="CrossfireManager\Memory\window.h" />
     <ClInclude Include="CrossfireManager\Memory\xorstr.hpp" />
     <ClInclude Include="CrossfireManager\offsets.h" />
     <ClInclude Include="CrossfireManager\Overlay.h" />
     <ClInclude Include="CrossfireManager\Template\Cache.h" />
-    <ClInclude Include="CrossfireManager\Triggerbot\Triggerbot.h" />
+    <ClInclude Include="CrossfireManager\Aimbot\Aimbot.hpp" />
+    <ClInclude Include="CrossfireManager\Template\CacheManager.h" />
     <ClInclude Include="CrossfireManager\UI\FTXUI.hpp" />
     <ClInclude Include="ImGui\imconfig.h" />
     <ClInclude Include="ImGui\imgui.h" />
@@ -408,22 +427,8 @@
     <ClInclude Include="pdcurses_x64-windows\include\curses.h" />
     <ClInclude Include="pdcurses_x64-windows\include\panel.h" />
     <ClInclude Include="src\common.h" />
-    <ClInclude Include="src\consts.h" />
     <ClInclude Include="src\dma.h" />
-    <ClInclude Include="src\HidTable.h" />
-    <ClInclude Include="src\imgui\imconfig.h" />
-    <ClInclude Include="src\imgui\imgui.h" />
-    <ClInclude Include="src\imgui\imgui_impl_dx11.h" />
-    <ClInclude Include="src\imgui\imgui_impl_win32.h" />
-    <ClInclude Include="src\imgui\imgui_internal.h" />
-    <ClInclude Include="src\imgui\imstb_rectpack.h" />
-    <ClInclude Include="src\imgui\imstb_textedit.h" />
-    <ClInclude Include="src\imgui\imstb_truetype.h" />
-    <ClInclude Include="src\kmbox.h" />
-    <ClInclude Include="src\kmnetlogo.h" />
     <ClInclude Include="src\socket.h" />
-    <ClInclude Include="src\window.h" />
-    <ClInclude Include="src\xorstr.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="imgui\examples\example_glfw_wgpu\web\index.html" />

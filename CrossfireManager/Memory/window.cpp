@@ -12,8 +12,13 @@
 #include <vector>
 #include <Overlay.h>
 #include <offsets.h>
-extern std::mutex g_espRectsMutex;
-extern std::vector<RectData> g_espRectsFront;
+struct ESPData {
+    std::vector<RectData> rects;
+    std::vector<LineData> lines;
+};
+
+extern std::mutex g_espDataMutex;
+extern ESPData g_espDataFront;
 #ifndef RGB
 #define RGB(r, g, b) ((DWORD)(((BYTE)(r) | ((WORD)(g) << 8)) | (((DWORD)(BYTE)(b)) << 16)))
 #endif
@@ -45,7 +50,7 @@ void window::render_frame() {
 
      
     if (ESPDRAWBOX) {
-        if(!ESPManager::GetInstance().IsESPActive()) // this might be issue
+        if(!ESPManager::GetInstance().IsESPActive())
         ESPManager::GetInstance().StartESP(mem);
         ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize, ImGuiCond_Always);
@@ -54,21 +59,26 @@ void window::render_frame() {
             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground);
         
-        window::outlined_text(ImVec2(50, 50), IM_COL32(255, 0, 0, 255), "ESP Overlay ON");
+        window::outlined_text(ImVec2(50, 50), IM_COL32(0, 255, 0, 255), "ESP : ON");
         float fps = ImGui::GetIO().Framerate;
         ImGui::Text("Framerate: %.1f FPS", fps);
 
+        if (offs::AIMBOTBOX) {
+           
+            window::outlined_text(ImVec2(50, 90), IM_COL32(0, 255, 0, 255), "Aimbot : ON");
+
+        }
         ImGui::End();
 
-        std::vector<RectData> rectsCopy;
+        ESPData localESPData;
         {
-            std::lock_guard<std::mutex> lock(g_espRectsMutex);
-            rectsCopy = g_espRectsFront;
+            std::lock_guard<std::mutex> lock(g_espDataMutex);
+            localESPData = g_espDataFront;
         }
 
         auto drawList = ImGui::GetForegroundDrawList();
 
-        for (const auto& rect : rectsCopy) {
+        for (const auto& rect : localESPData.rects) {
 
             int adjustedX = rect.x - 5;
             int adjustedY = rect.y - 1;
@@ -95,25 +105,35 @@ void window::render_frame() {
             float barHeight = rect.h * healthPercent;
             float barX = rect.x - (barWidth + 3.0f);
             float barY = rect.y + (rect.h - barHeight);
+
             drawList->AddRectFilled(
                 ImVec2(barX, barY),
                 ImVec2(barX + barWidth, barY + barHeight),
                 GetHealthColor(healthPercent)
             );
 
-
+            for (const auto& line : localESPData.lines) {
+                drawList->AddLine(
+                    ImVec2(static_cast<float>(line.x1), static_cast<float>(line.y1)),
+                    ImVec2(static_cast<float>(line.x2), static_cast<float>(line.y2)),
+                    line.color,
+                    2.0f
+                );
+            }
         }
     }
     else {
         if (ESPManager::GetInstance().IsESPActive()) // this might be issue
         ESPManager::GetInstance().StopESP();
         {
-            window::outlined_text(ImVec2(50, 50), IM_COL32(255, 0, 0, 255), "ESP Overlay OFF");
+            
             float fps = ImGui::GetIO().Framerate;
             ImGui::Text("Framerate: %.1f FPS", fps);
             std::lock_guard<std::mutex> lock(g_espMutex);
             g_espRects.clear();
             cachedRects.clear();
+            g_espDataFront.rects.clear();
+            g_espDataFront.lines.clear();
         }
     }
 

@@ -40,6 +40,14 @@ struct RectData {
     int maxHP;
 };
 
+struct LineData {
+    int x1;
+    int y1;
+    int x2;
+    int y2;
+    ImU32 color;
+};
+
 // Now, define the globals as inline variables so they have a single definition.
 inline std::mutex g_espMutex;
 inline std::vector<RectData> g_espRects;

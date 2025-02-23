@@ -140,10 +140,13 @@ void HandleMenuSelection(int selected, ftxui::ScreenInteractive& screen, ftxui::
 			break;
 
 		case 4:
-			if (!KLASSES::AimbotManager::GetInstance().IsAimbotActive()) {
+
+			offs::AIMBOTBOX = !offs::AIMBOTBOX;
+			if (!KLASSES::AimbotManager::GetInstance().IsAimbotActive() && offs::AIMBOTBOX) {
 				KLASSES::AimbotManager::GetInstance().StartAimbot(mem);
 			}
 			else {
+				if(!offs::AIMBOTBOX)
 				KLASSES::AimbotManager::GetInstance().StopAimbot();
 			}
 			screen.PostEvent(ftxui::Event::Custom);
@@ -182,7 +185,7 @@ int main() {
 	std::cout << "\033[2J\033[1;1H";
 	 
 	int selected = 0;
-	std::vector<std::string> entries = { "ESP", "Aimbot", "Print EntityList", "Print Address", "TriggerBot", "Offset Finder" };
+	std::vector<std::string> entries = { "ESP", "Aimbot", "Print EntityList", "Print Address", "Aimbot", "Offset Finder" };
 	auto menu = ftxui::Menu(&entries, &selected);
 
 	ftxui::Component dynamic_content = ftxui::Renderer([] { return ftxui::emptyElement(); });

@@ -1,6 +1,8 @@
 ﻿#include "ESPManager.hpp"
 #include <algorithm>
-#include "Overlay.h"
+#include "Overlay.h"   
+#include <imgui.h>     
+
 #include <vector>
 #include <array>
 #include <mutex>
@@ -8,19 +10,30 @@
 #include "CacheManager.h"
 using namespace KLASSES;
 using namespace std::chrono_literals;
-std::mutex g_espRectsMutex;
-std::vector<RectData> g_espRectsFront;
+
  
 namespace {
     constexpr int MAX_PLAYERS = 16;
 
-    
+     
 
-  
+    
 }
 
+struct ESPData {
+    std::vector<RectData> rects;
+    std::vector<LineData> lines;
+};
+std::mutex g_espDataMutex;
+ESPData g_espDataFront;
+ 
 
 
+
+
+
+
+ 
 void ESPManager::ToggleESP(Memory& mem) {
    
     if (!LT_SHELL) {
@@ -66,38 +79,41 @@ void ESPManager::StopESP() {
 
 void ESPManager::ESPWorker(std::stop_token stopToken, Memory& mem) {
     while (!stopToken.stop_requested() && m_active.load(std::memory_order_relaxed)) {
-        
         auto snapshot = g_cacheManager.GetSnapshot();
         if (!snapshot || snapshot->enemies.empty()) {
-           
             {
-                std::lock_guard<std::mutex> lock(g_espRectsMutex);
-                g_espRectsFront.clear();
+                std::lock_guard<std::mutex> lock(g_espDataMutex);
+                g_espDataFront.rects.clear();
+                g_espDataFront.lines.clear();
             }
             std::this_thread::sleep_for(8ms);
             continue;
         }
 
         DrawPlayerESP(mem, snapshot);
-
-        std::this_thread::sleep_for(8ms);
+        std::this_thread::sleep_for(3ms);
     }
 }
 
 
+
 void ESPManager::DrawPlayerESP(Memory& mem, const std::shared_ptr<ESP::Snapshot>& snapshot) {
     std::vector<RectData> frameRects;
-
+    std::vector<LineData> frameLines;
     LT_DRAWPRIM globalDrawPrim = mem.Read<LT_DRAWPRIM>(offs::ILTDrawPrim);
 
     D3DXVECTOR3 localAbsPos = snapshot->localAbsPos;
+    D3DXVECTOR3 localScreenPos = localAbsPos;
+    if (!EngineW2S(globalDrawPrim, &localScreenPos)) {
 
+    }
     for (const auto& enemy : snapshot->enemies) {
 
         D3DXVECTOR3 headPos = enemy.HeadPos;
         D3DXVECTOR3 footPos = enemy.FootPos;
         if (!EngineW2S(globalDrawPrim, &headPos) || !EngineW2S(globalDrawPrim, &footPos))
             continue;
+        
 
         D3DXVECTOR3 bodyCenter = {
             (headPos.x + footPos.x) / 2.0f,
@@ -128,13 +144,28 @@ void ESPManager::DrawPlayerESP(Memory& mem, const std::shared_ptr<ESP::Snapshot>
         rect.maxHP = 100;
 
         frameRects.push_back(rect);
+
+        LineData line;
+        line.x1 = static_cast<int>(localScreenPos.x);
+        line.y1 = static_cast<int>(localScreenPos.y);
+        line.x2 = static_cast<int>(bodyCenter.x);
+        line.y2 = static_cast<int>(bodyCenter.y);
+        // Convert the enemy color from RGBA to ImU32
+        line.color = IM_COL32(ESPColorEnemy.R, ESPColorEnemy.G, ESPColorEnemy.B, ESPColorEnemy.A);
+
+        frameLines.push_back(line);
     }
 
     {
-        std::lock_guard<std::mutex> lock(g_espRectsMutex);
-        g_espRectsFront.swap(frameRects);
+        std::lock_guard<std::mutex> lock(g_espDataMutex);
+        g_espDataFront.rects.swap(frameRects);
+        g_espDataFront.lines.swap(frameLines);
     }
 }
+
+
+   
+ 
 
   /*void RETURNESP(Memory& mem, bool enable, BYTE R, BYTE G, BYTE B)
 {

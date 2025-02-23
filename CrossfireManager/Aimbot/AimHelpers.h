@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Classes.h"
 #include <d3dx9math.h>
 #include <Windows.h>
@@ -10,90 +11,138 @@
 #include "KMBOX.h"
 
 namespace KLASSES {
-    struct TargetInfo {
+
+    enum class EnemyPosition : uint8_t
+    {
+        INSIDE_SCREEN = 0,
+        BEHIND = 1 << 0,
+        ABOVE = 1 << 1,
+        BELOW = 1 << 2,
+        LEFT = 1 << 3,
+        RIGHT = 1 << 4
+    };
+
+    struct TargetInfo
+    {
         const ESP::MinimalPlayerData* playerData;
         float distance;
     };
 
-    struct TargetInfo2 {
+    struct TargetInfo2
+    {
         const ESP::MinimalPlayerData* playerData;
         float screenDistance;
     };
 
+    inline float GetHorizontalFOV(const D3DXMATRIX& projMatrix, float aspectRatio)
+    {
+        float verticalFOV = 2.0f * atanf(1.0f / projMatrix.m[1][1]);
+        return 2.0f * atanf(tanf(verticalFOV / 2.0f) * aspectRatio) * (180.0f / 3.14159f);
+    }
+
+    inline float CalculateDynamicSmooth(float distance, float maxDistance = 5000.0f, float baseSmooth = 0.2f)
+    {
+        return baseSmooth * std::clamp(distance / maxDistance, 0.1f, 1.0f);
+    }
+
     inline TargetInfo FindBestTarget(
         const D3DXVECTOR3& localAbsPos,
-        const std::vector<ESP::MinimalPlayerData>& enemies
-    ) {
+        const std::vector<ESP::MinimalPlayerData>& enemies)
+    {
         TargetInfo bestTarget{};
         float closestDistance = FLT_MAX;
 
-        for (const auto& enemy : enemies) {
-            if (enemy.IsDead) continue;
+        for (const auto& enemy : enemies)
+        {
+            if (enemy.IsDead)
+                continue;
+
             D3DXVECTOR3 delta = enemy.AbsPos - localAbsPos;
             float distance = D3DXVec3Length(&delta);
-            if (distance < closestDistance) {
+
+            if (distance < closestDistance)
+            {
                 closestDistance = distance;
                 bestTarget.playerData = &enemy;
                 bestTarget.distance = distance;
             }
         }
+
         return bestTarget;
     }
 
-
-    inline const ESP::MinimalPlayerData* FindClosestTarget(
+    inline const ESP::MinimalPlayerData* FindClosestTargetFOV(
         const D3DXVECTOR3& localAbsPos,
-        const std::vector<ESP::MinimalPlayerData>& enemies)
+        const std::vector<ESP::MinimalPlayerData>& enemies,
+        const LT_DRAWPRIM& drawPrim)
     {
         const ESP::MinimalPlayerData* bestTarget = nullptr;
-        float bestWorldDistance = FLT_MAX;
-        for (const auto& enemy : enemies) {
+        float bestScreenDistance = FLT_MAX;
+        int screenCenterX = drawPrim.viewport.X + drawPrim.viewport.Width / 2;
+        int screenCenterY = drawPrim.viewport.Y + drawPrim.viewport.Height / 2;
+
+        for (const auto& enemy : enemies)
+        {
             if (enemy.IsDead)
                 continue;
-            D3DXVECTOR3 delta = enemy.AbsPos - localAbsPos;
-            float worldDistance = D3DXVec3Length(&delta);
-            if (worldDistance < bestWorldDistance) {
-                bestWorldDistance = worldDistance;
+
+            D3DXVECTOR3 screenPos = enemy.AbsPos;
+            if (!EngineW2S(drawPrim, &screenPos))
+                continue;
+
+            float dx = screenPos.x - screenCenterX;
+            float dy = screenPos.y - screenCenterY;
+            float dist = sqrtf(dx * dx + dy * dy);
+
+            if (dist < bestScreenDistance)
+            {
+                bestScreenDistance = dist;
                 bestTarget = &enemy;
             }
         }
+
         return bestTarget;
     }
 
-
-
-
-
-    inline float CalculateDynamicSmooth(float distance, float maxDistance = 5000.0f, float baseSmooth = 0.2f) {
-        return baseSmooth * std::clamp(distance / maxDistance, 0.1f, 1.0f);
-    }
-
-    inline D3DXVECTOR3 CalcAngleWorld(const D3DXVECTOR3& src, const D3DXVECTOR3& dst) {
+    inline D3DXVECTOR3 CalcAngleWorld(
+        const D3DXVECTOR3& src,
+        const D3DXVECTOR3& dst)
+    {
         D3DXVECTOR3 delta = dst - src;
         float distance = D3DXVec3Length(&delta);
-
-
         float pitch = -asinf(delta.y / distance) * (1539.0f / static_cast<float>(M_PI_2));
-
-
         float yaw = atan2f(delta.x, delta.z) * (180.0f / static_cast<float>(M_PI));
 
         return { pitch, yaw, 0.0f };
     }
 
-    inline bool Movement(const std::shared_ptr<ESP::Snapshot>& snapshot, Memory& mem, int& moveX, int& moveY)
+    float NormalizeYaw(float yaw)
+    {
+        yaw = fmod(yaw, 360.0f);
+        if (yaw < 0.0f)
+            yaw += 360.0f;
+        return yaw;
+    }
+
+    inline bool Movement(
+        const std::shared_ptr<ESP::Snapshot>& snapshot,
+        Memory& mem,
+        int& moveX,
+        int& moveY)
     {
         if (snapshot->enemies.empty())
             return false;
 
+        LT_DRAWPRIM drawPrim = mem.Read<LT_DRAWPRIM>(offs::ILTDrawPrim);
         const D3DXVECTOR3& localAbsPos = snapshot->localAbsPos;
-        const ESP::MinimalPlayerData* target = FindClosestTarget(localAbsPos, snapshot->enemies);
-        if (!target)
+        float aspectRatio = static_cast<float>(drawPrim.viewport.Width) / drawPrim.viewport.Height;
+
+        const ESP::MinimalPlayerData* target = FindClosestTargetFOV(localAbsPos, snapshot->enemies, drawPrim);
+        if (!target || target->IsDead != 0)
             return false;
 
-        LT_DRAWPRIM drawPrim = mem.Read<LT_DRAWPRIM>(offs::ILTDrawPrim);
-        const int screenCenterX = drawPrim.viewport.X + (drawPrim.viewport.Width / 2);
-        const int screenCenterY = drawPrim.viewport.Y + (drawPrim.viewport.Height / 2);
+        int screenCenterX = drawPrim.viewport.X + (drawPrim.viewport.Width / 2);
+        int screenCenterY = drawPrim.viewport.Y + (drawPrim.viewport.Height / 2);
 
         D3DXVECTOR3 screenHead = target->HeadPos;
         D3DXVECTOR3 screenFoot = target->FootPos;
@@ -105,52 +154,33 @@ namespace KLASSES {
             (screenHead.y + screenFoot.y) / 2.0f,
             0.0f
         };
-         
+
         D3DXVECTOR3 delta = target->AbsPos - localAbsPos;
-
-        const float worldDistance = D3DXVec3Length(&delta);
-
+        float worldDistance = D3DXVec3Length(&delta) / 100.0f;
         const D3DXMATRIX& projMatrix = drawPrim.projection;
+        float verticalFOV = 2.0f * atanf(1.0f / projMatrix.m[1][1]);
+        float viewportHeight = static_cast<float>(drawPrim.viewport.Height);
+        float pixelsPerMeter = viewportHeight / (2.0f * tanf(verticalFOV / 2.0f));
+        const float REAL_HEAD_HEIGHT = 0.9f;
+        const float MIN_OFFSET = 15.0f;
+        float verticalOffset = (REAL_HEAD_HEIGHT / worldDistance) * pixelsPerMeter;
+        verticalOffset = std::max(verticalOffset, MIN_OFFSET);
 
+        D3DXVECTOR3 adjustedAim = { bodyCenter.x, bodyCenter.y - verticalOffset, 0.0f };
 
-        const float verticalFOV = 2.0f * atanf(1.0f / projMatrix.m[1][1]); 
-
-        const float viewportHeight = static_cast<float>(drawPrim.viewport.Height);
-        const float pixelsPerMeter = (viewportHeight / (2.0f * tanf(verticalFOV / 2.0f)));
-
-        const float REAL_HEAD_HEIGHT = 0.7f;
-        const float verticalOffset = (REAL_HEAD_HEIGHT / worldDistance) * pixelsPerMeter;
-
-         
-        D3DXVECTOR3 adjustedAim = {
-        bodyCenter.x,
-        bodyCenter.y - verticalOffset, 
-        0.0f
-        };
+        Utils::DebugLog("[AimDebug] BodyCenterY: %.1f | Offset: %.1f | FinalY: %.1f",
+            bodyCenter.y, verticalOffset, adjustedAim.y);
+        Utils::DebugLog("[Offset] WorldDist: %.1fm | Pixels/M: %.1f | Offset: %.1f",
+            worldDistance, pixelsPerMeter, verticalOffset);
 
         moveX = static_cast<int>((adjustedAim.x - screenCenterX) * 0.1f);
         moveY = static_cast<int>((adjustedAim.y - screenCenterY) * 0.1f);
+
         return true;
     }
 
-
-
-     
-
-
-
-
-
-
-    
-
-    float NormalizeYaw(float yaw) {
-        // Normalize yaw to [0, 360)
-        yaw = fmod(yaw, 360.0f);
-        if (yaw < 0.0f) yaw += 360.0f;
-        return yaw;
-    }
-    inline void MoveMouse(int dx, int dy) {
+    inline void MoveMouse(int dx, int dy)
+    {
         INPUT input = { 0 };
         input.type = INPUT_MOUSE;
         input.mi.dx = dx;
@@ -159,6 +189,4 @@ namespace KLASSES {
         SendInput(1, &input, sizeof(INPUT));
     }
 
-    
-    }
-
+} // namespace KLASSES

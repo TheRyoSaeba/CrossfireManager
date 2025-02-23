@@ -28,6 +28,9 @@ namespace ESP {
     struct Snapshot {
         D3DXVECTOR3 localAbsPos;
         D3DXVECTOR3 localHeadPos;
+        bool localIsDead;  
+        float m_localYaw;
+        float m_localPitch;
         std::vector<MinimalPlayerData> enemies;
     };
 
@@ -71,7 +74,10 @@ namespace ESP {
             Snapshot snap;
             snap.localAbsPos = m_localAbsolutePosition;
             snap.localHeadPos = m_localHeadPosition;
+            snap.localIsDead = m_localIsDead;
             snap.enemies = m_minimalPlayers;
+            float m_localYaw;
+            float m_localPitch;
             return snap;
         }
 
@@ -81,6 +87,9 @@ namespace ESP {
             m_localPlayer = KLASSES::pPlayer{};
             m_localAbsolutePosition = D3DXVECTOR3{};
             m_localHeadPosition = D3DXVECTOR3{};
+            float m_localYaw;
+            float m_localPitch;
+            bool m_localIsDead;
             m_players.fill(KLASSES::pPlayer{});
             m_headPositions.fill(D3DXVECTOR3{});
             m_footPositions.fill(D3DXVECTOR3{});
@@ -100,7 +109,9 @@ namespace ESP {
         KLASSES::pPlayer m_localPlayer;
         D3DXVECTOR3 m_localAbsolutePosition;
         D3DXVECTOR3 m_localHeadPosition;
-
+        bool m_localIsDead;
+        float m_localYaw;
+        float m_localPitch;
         std::array<KLASSES::pPlayer, MAX_PLAYERS> m_players;
         std::array<D3DXVECTOR3, MAX_PLAYERS> m_headPositions;
         std::array<D3DXVECTOR3, MAX_PLAYERS> m_footPositions;
@@ -122,21 +133,25 @@ namespace ESP {
         }
 
         bool UpdateLocalPlayer(Memory& mem) {
-            
             m_localPlayer = m_clientShell.GetLocalPlayer(mem);
             if (m_localPlayer.hObject != nullptr) {
                 m_localAbsolutePosition = mem.Read<D3DXVECTOR3>(
-                    reinterpret_cast<uintptr_t>(m_localPlayer.hObject) +
-                    offsetof(KLASSES::obj, AbsolutePosition));
+                    reinterpret_cast<uintptr_t>(m_localPlayer.hObject) + offsetof(KLASSES::obj, AbsolutePosition));
                 m_localHeadPosition = mem.Read<D3DXVECTOR3>(
-                    reinterpret_cast<uintptr_t>(m_localPlayer.hObject) +
-                    offsetof(KLASSES::obj, Head));
+                    reinterpret_cast<uintptr_t>(m_localPlayer.hObject) + offsetof(KLASSES::obj, Head));
+                
+                m_localIsDead = mem.Read<bool>(
+                    reinterpret_cast<uintptr_t>(m_localPlayer.characFX) + offsetof(KLASSES::pCharacterFx, isDead)
+                );
+                m_localYaw = mem.Read<float>(
+                    reinterpret_cast<uintptr_t>(m_clientShell.CPlayerClntBase) +
+                    offsetof(KLASSES::pPlayerClntBase, Yaw));
+                m_localPitch = mem.Read<float>(
+                    reinterpret_cast<uintptr_t>(m_clientShell.CPlayerClntBase) +
+                    offsetof(KLASSES::pPlayerClntBase, Pitch));
                 return true;
             }
             return false;
-            
-
-           
         }
 
         void UpdateEntities(Memory& mem) {

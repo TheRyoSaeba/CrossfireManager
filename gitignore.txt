@@ -294,11 +294,10 @@ node_modules/
 # Visual Studio 6 auto-generated workspace file (contains which files were open etc.)
 *.vbw
 #ignore output and build
-/crossfiremanager/output/
-/crossfiremanager/CFmanager/output/
-/crossfiremanager/CFmanager/build/
-/crossfiremanager/build/
-
+CrossfireManager/Output
+CrossfireManager/Build
+CFManager/Output
+CFManager/Build
 
 # Visual Studio LightSwitch build output
 **/*.HTMLClient/GeneratedArtifacts

@@ -1,0 +1,44 @@
+#pragma once
+
+#define IS_AUTHED false
+#define WEBRADAR_ENABLED IS_AUTHED
+#define THEMIDA 0
+
+#if THEMIDA
+#include <ThemidaSDK.h>
+
+#define VM_SMALL_START VM_DOLPHIN_WHITE_START
+#define VM_SMALL_END VM_DOLPHIN_WHITE_END
+
+#define VM_MEDIUM_START VM_LION_RED_START
+#define VM_MEDIUM_END VM_LION_RED_END
+
+#define VM_MEDIUM2_START VM_DOLPHIN_BLACK_START
+#define VM_MEDIUM2_END VM_DOLPHIN_BLACK_END
+
+#define VM_LARGE_START VM_SHARK_RED_START
+#define VM_LARGE_END VM_SHARK_RED_END
+
+#define STR_START STR_ENCRYPT_START
+#define STR_END STR_ENCRYPT_END
+
+#else
+
+#define VM_SMALL_START
+#define VM_SMALL_END
+
+#define VM_MEDIUM_START
+#define VM_MEDIUM_END
+
+#define VM_MEDIUM2_START
+#define VM_MEDIUM2_END
+
+#define VM_LARGE_START
+#define VM_LARGE_END
+
+#define STR_START
+#define STR_END
+
+#endif
+
+#define GUIDE_LINK xorstr_("blurred.gg/guides")

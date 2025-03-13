@@ -94,7 +94,9 @@ static bool enableAimbot = false;
 inline float AimFov = 100;
 inline float AimSpeed = 0.5f;
 inline float MaxAimDistance = 100;
-static int firstHotkey = 1;
+static int firstHotkey = 0;
+static int selectedSmoothType = 0;
+static int esp_timer = 0;
 static bool Headcheckbox = false;
 static bool Healthcheckbox = false;
 static bool showInfoText = true;
@@ -104,7 +106,7 @@ static bool Distancecheckbox = false;
 static bool weaponcheckbox = false;
 inline bool Filterteams = false;
 static bool showFPS = true;   
-static bool Filterteams_map = false;
+static bool draw_radar = false;
 static bool Bonecheckbox = false;
 static bool showEspLines = false;
 static int esptype = 0;
@@ -171,31 +173,7 @@ void ImRotateStart()
 {
     rotation_start_index = ImGui::GetWindowDrawList()->VtxBuffer.Size;
 }
-void  set_overlay(HWND hwnd, bool transparent) {
-    if (overlayVisible) {
-        
-        SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_TOPMOST | WS_EX_LAYERED);
-
-        if (transparent) {
-            SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
-
-        }
-        else {
-            SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), 0, NULL);
-        }
-
-        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-        return;
-    }
-
-    SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) & ~WS_EX_TOPMOST);
-    SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) & ~WS_EX_LAYERED);
-    SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), 0, NULL);
-    SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-
-
-
-}
+ 
 
 inline void DrawBoneExternal(ImDrawList* draw, Memory& mem,
     const D3DXVECTOR3& Bone1Pos, const D3DXVECTOR3& Bone2Pos,
@@ -310,64 +288,54 @@ void ImRotateEnd(float rad, ImVec2 center = ImRotationCenter())
         buf[i].pos = ImRotate(buf[i].pos, s, c) - center;
 }
  
-void EnableGlassTransparency2(HWND hwnd, bool enable) {
-    MARGINS margins = enable ? MARGINS{ -1, -1, -1, -1 } : MARGINS{ 0, 0, 0, 0 };
-    DwmExtendFrameIntoClientArea(hwnd, &margins);
-
-    LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-
-    if (enable) {  
-        exStyle |= WS_EX_TOPMOST;  
-        exStyle &= ~WS_EX_LAYERED;  
-      
-    }
-    else {  
-        
-        exStyle &= ~WS_EX_TOPMOST;   
-        exStyle &= ~WS_EX_LAYERED; 
-    }
-
-    SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
-    SetWindowPos(hwnd, enable ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-}
 
 
 
+
+ 
 
 
 void set_mouse_passthrough(HWND hwnd) {
 
-    allow_clicks = false;
-    LONG style = GetWindowLong(hwnd, GWL_EXSTYLE);
    
-    if (overlayMode == 0) { 
+    LONG style = GetWindowLong(hwnd, GWL_EXSTYLE);
+
+    if (overlayMode == 0) {
         if (showMenu) {
-            SetForegroundWindow(hwnd);
+           
             SetWindowLong(hwnd, GWL_EXSTYLE, style & ~WS_EX_LAYERED);
             SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         }
         else {
+           
              
-           // SetWindowLong(hwndMenu, GWL_EXSTYLE, style | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE);
-
-            SetWindowLong(hwnd, GWL_EXSTYLE, style | WS_EX_LAYERED);
+            //SetWindowLong(hwnd, GWL_EXSTYLE, style & ~WS_EX_LAYERED);
+           SetWindowLong(hwnd, GWL_EXSTYLE, style | WS_EX_LAYERED);
 
         }
     }
-    else { 
-        SetWindowLong(hwnd, GWL_EXSTYLE, style | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE);
+    else {
+        SetWindowLong(hwnd, GWL_EXSTYLE, style & ~WS_EX_LAYERED);
+        SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+     
     }
-      
+
     if (allow_clicks)
     {
-        SetWindowLong(hwnd, GWL_EXSTYLE, style | WS_EX_LAYERED);
-      //  SetWindowLong(hwnd, GWL_EXSTYLE, style | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE);
+          style &= ~WS_EX_NOACTIVATE;
+        SetWindowLong(hwnd, GWL_EXSTYLE, style & ~WS_EX_LAYERED);
+        //  SetWindowLong(hwnd, GWL_EXSTYLE, style | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE);
     }
+     
 
-    
 
-   // SetWindowPos(hwndMenu, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+
+    // SetWindowPos(hwndMenu, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 }
+
+ 
+
+
 
 
  
@@ -380,19 +348,17 @@ void EnableGlassTransparency(HWND hwnd, bool enable) {
     if (enable) {
         MARGINS margins = { -1, -1, -1, -1 };
         DwmExtendFrameIntoClientArea(hwnd, &margins);
-
-        //SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) & ~WS_EX_LAYERED);
-        
-        //SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-        //SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_NOACTIVATE);
+      
+ 
     }
     else {
         MARGINS margins = { 0, 0, 0, 0 };
         DwmExtendFrameIntoClientArea(hwnd, &margins);
-        SetWindowLong(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) & ~WS_EX_LAYERED);
-
-
+        LONG style = GetWindowLong(hwnd, GWL_EXSTYLE);
         SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+        SetWindowLong(hwnd, GWL_EXSTYLE, style | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE);
+
+        
     }
 }
 void  outlined_text(const ImVec2& pos, ImU32 color, const char* text) {
@@ -457,8 +423,8 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
 
          
         HWND hwnd = reinterpret_cast<HWND>(dwData);
-
-        SetWindowLong(hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+        
+         
         SetWindowLong(hwnd, GWL_EXSTYLE, WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT);
 
       
@@ -501,20 +467,17 @@ int main(int, char**)
 
 
    HWND hwnd = CreateWindowExW(
-        WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+        WS_EX_TOPMOST |WS_EX_NOACTIVATE| WS_EX_TOOLWINDOW,
         wc.lpszClassName,
         L"Makimura",
         WS_POPUP,
         100, 100, primaryWidth, primaryHeight,
         nullptr, nullptr, wc.hInstance, nullptr);
 
-
-    EnableGlassTransparency(hwnd, true);
    
-
- 
-
-    set_monitor(0, hwnd);
+   EnableGlassTransparency(hwnd, true);
+   set_monitor(0, hwnd);
+    
     
    if (!CreateDeviceD3D(hwnd))
    {
@@ -589,7 +552,7 @@ int main(int, char**)
         if (mem.GetKeyboard()->IsKeyDown(0x2D) || GetAsyncKeyState(0x2D)) {
             showMenu = !showMenu;
 
-            
+           
             set_mouse_passthrough(hwnd);
             std::this_thread::sleep_for(std::chrono::milliseconds(150));
         }
@@ -640,7 +603,7 @@ int main(int, char**)
 
                     if (!showMenu)
                     {
-                        //set_mouse_passthrough();vvvvvvvvvvvvvvvvvvvvv
+                      
                         return 0;
                     }
 
@@ -761,7 +724,7 @@ int main(int, char**)
                         
                         
                         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.53f, 0.81f, 0.98f, 0.25f));
-                        ImGui::SetCursorPos(ImVec2(20 + tab_size, 90) + (s->ItemSpacing * 2));
+                        ImGui::SetCursorPos(ImVec2(40 + tab_size, 90) + (s->ItemSpacing * 2));
                         ImGui::BeginGroup();
                         {
                             ImGui::BeginChild("E", "Aimbot ", ImVec2(panelWidth, panelHeight), true );
@@ -797,7 +760,7 @@ int main(int, char**)
 
                                 
                                 const char* smoothTypes[] = { "Linear", "Dynamic", "Koestep", "Trapezoid" };
-                                static int selectedSmoothType = 0;
+                                 
                                 ImGui::Combo("Smooth Type", &selectedSmoothType, smoothTypes, IM_ARRAYSIZE(smoothTypes));
 
                                 ImGui::Spacing();
@@ -826,9 +789,9 @@ int main(int, char**)
                     {
                          
                         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.53f, 0.81f, 0.98f, 0.25f));
-                        ImGui::BeginChild("" , "Triggerbot", ImVec2(panelWidth, panelHeight), true);
+                        ImGui::BeginChild("" , "Targeting", ImVec2(panelWidth, panelHeight), true);
                         {
-                            ImGui::Text("Triggerbot Settings");
+                            ImGui::Text("Targeting Options");
                             ImGui::Separator();
                             ImGui::Spacing();
 
@@ -911,11 +874,11 @@ int main(int, char**)
                                 ImGui::Separator();
 
                                 ImGui::SliderInt("ESP Distance", &fov, 0, 1500);
-                                static float chance_hit = 0.5f;
+                                
 
                                 ImGui::Separator();
 
-                                ImGui::SliderFloat("Delay", &chance_hit, 0.5f, 5.f, "%.1f");
+                                ImGui::SliderInt("ESP Delay", &esp_timer, 0, 10);
 
 
                                 ImGui::Separator();
@@ -1116,7 +1079,7 @@ int main(int, char**)
                             ImGui::BeginChild("A", "Team", ImVec2((c::bg::size.x - 60 - s->ItemSpacing.x * 4) / 2, 80));
                             {
                                 ImGui::Checkbox("Filter teams", &Filterteams);
-                                ImGui::Checkbox("Filter teams on map", &Filterteams_map);
+                                ImGui::Checkbox("Enable Radar", &draw_radar);
                             }
                             ImGui::EndChild();
                         }
@@ -1125,8 +1088,10 @@ int main(int, char**)
 
                     if (tabs == 3)
                     {
+
+                       
                         allow_clicks = true;
-                        set_mouse_passthrough(hwnd);
+                       set_mouse_passthrough(hwnd);
                         ImGui::SetCursorPos(ImVec2(30 + tab_size, 60) + (s->ItemSpacing * 2));
                         ImGui::BeginGroup();
                         {
@@ -1160,7 +1125,7 @@ int main(int, char**)
                                     SaveCheatConfig(configName);
                                     LOG("[!] Config saved: %s\n", configName);
                                     configList = GetCheatConfigList();
-                                    allow_clicks = false;
+                                     
                                 }
                                 ImGui::SameLine();
                                 if (ImGui::Button("Folder", ImVec2(topButtonWidth, topButtonHeight)))
@@ -1309,8 +1274,7 @@ int main(int, char**)
                                 if (ImGui::Combo("Overlay Mode", &overlayMode, overlayModes, IM_ARRAYSIZE(overlayModes))) {
                                     bool enableGlass = (overlayMode == 0);
                                     EnableGlassTransparency(hwnd, enableGlass);
-                                   // set_mouse_passthrough(hwnd);
-                                    // EnableGlassTransparency2(hwndMenu, enableGlass);
+                              
 
                                 }
 
@@ -1565,22 +1529,22 @@ int main(int, char**)
 
             static auto lastUpdate = std::chrono::high_resolution_clock::now();
             auto now = std::chrono::high_resolution_clock::now();
-            bool shouldDraw = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastUpdate).count() >= 2;
+            bool shouldDraw = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastUpdate).count() >=2;
 
              
 
             ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
             ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize, ImGuiCond_Always);
-
+             
             if (Dcheckbox) {
 
- 
+
                 ImGui::Begin("Overlay", nullptr,
                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar |
                     ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
                     ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs);
 
-               // outlined_text(ImVec2(50, 50), IM_COL32(0, 255, 0, 255), "ESP : ON");
+                // outlined_text(ImVec2(50, 50), IM_COL32(0, 255, 0, 255), "ESP : ON");
                 float fps = ImGui::GetIO().Framerate;
                 ImGui::Text("Framerate: %.1f FPS", fps);
 
@@ -1591,262 +1555,350 @@ int main(int, char**)
 
                 if (shouldDraw && RUNCACHE) {
                     lastUpdate = now;
-                ImDrawList* draw = ImGui::GetForegroundDrawList();
-                g_cacheManager.StartUpdateThread(mem);
-                auto snapshot = g_cacheManager.GetSnapshot();
-
-                 
-                
-                
-                
-                if (snapshot) {
-                    for (const auto& enemy : snapshot->enemies) {
-
-                        if (!snapshot->m_clientShell.inGame())
-                        {
-                            snapshot->enemies.clear();
-                        }
-
-                        bool isAlly = (enemy.Team == snapshot->localTeam);
-
-                        if (Filterteams && isAlly)
-                            continue;
-
-                        if (enemy.IsDead)
-                            continue;
+                    ImDrawList* draw = ImGui::GetForegroundDrawList();
+                    g_cacheManager.StartUpdateThread(mem);
+                    auto snapshot = g_cacheManager.GetSnapshot();
 
 
-                        D3DXVECTOR3 headPos = enemy.HeadPos;
-                        D3DXVECTOR3 footPos = enemy.FootPos;
+                    
 
 
 
-                        if (!EngineW2S(snapshot->drawPrim, &headPos) || !EngineW2S(snapshot->drawPrim, &footPos))
-                            continue;
 
+                    if (snapshot) {
+                        for (const auto& enemy : snapshot->enemies) {
 
-                        float height = fabs(footPos.y - headPos.y) * 1.15f;
-                        float width = height * 0.6f;
-
-                        float x = headPos.x - width / 2;
-                        float y = headPos.y - (height * 0.15f);
-
-                        RGBA finalColor = isAlly ? g_AllyColor : g_EnemyColor;
-
-
-                        float dx = enemy.AbsPos.x - snapshot->localAbsPos.x;
-                        float dy = enemy.AbsPos.y - snapshot->localAbsPos.y;
-                        float dz = enemy.AbsPos.z - snapshot->localAbsPos.z;
-                        float distanceMeters = std::fmaxf((sqrtf(dx * dx + dy * dy + dz * dz) - 400.0f) / 100.0f, 0.0f);
-
-                        float scaleFactor = std::clamp(1.5f - (distanceMeters / 50.0f), 0.6f, 1.2f);
-
-                        if (fov == 0 || distanceMeters > fov) continue;
-
-
-                        std::string playerName = std::string(enemy.Name, strnlen(enemy.Name, sizeof(enemy.Name)));
-
-
-                        RectData rect;
-                        rect.x = x;
-                        rect.y = y;
-                        rect.w = width;
-                        rect.h = height;
-                        rect.color = finalColor;
-                        rect.playerName = playerName;
-                        rect.currentHP = enemy.Health;
-                        rect.maxHP = 100;
-                        rect.headPos = headPos;
-                        rect.isAlly = (enemy.Team == snapshot->localTeam);
-
-
-
-                        if (Flogs[0]) {
-
-                            float headRadius = hdtk * 1.2f;
-                            ImVec2 headCenter = ImVec2(headPos.x, headPos.y - headRadius * 0.5f);
-
-                            draw->AddCircle(
-                                headCenter,
-                                headRadius,
-                                IM_COL32(g_HeadColor.R, g_HeadColor.G, g_HeadColor.B, g_HeadColor.A),
-                                30,
-                                2.5f +hdtk
-                            );
-                        }
-                        if (Dcheckbox) {
-                            switch (esptype) {
-                            case 0:
-                                draw->AddRect(
-                                    ImVec2(rect.x, rect.y),
-                                    ImVec2(rect.x + rect.w, rect.y + rect.h),
-                                    IM_COL32(rect.color.R, rect.color.G, rect.color.B, rect.color.A),
-                                    0.0f, ImDrawFlags_Closed, boxtk * scaleFactor
-                                );
-                                break;
-
-                            case 1:
-                                DrawCornerBox(rect.x, rect.y, rect.w, rect.h, boxtk * scaleFactor, rect.color);
-                                break;
-
-                            case 2:
-                                draw->AddRectFilled(
-                                    ImVec2(static_cast<float>(rect.x), static_cast<float>(rect.y)),
-                                    ImVec2(static_cast<float>(rect.x + rect.w), static_cast<float>(rect.y + rect.h)),
-                                    IM_COL32(rect.color.R, rect.color.G, rect.color.B, rect.color.A / 3)
-                                );
-
-                                draw->AddRect(
-                                    ImVec2(static_cast<float>(rect.x), static_cast<float>(rect.y)),
-                                    ImVec2(static_cast<float>(rect.x + rect.w), static_cast<float>(rect.y + rect.h)),
-                                    IM_COL32(rect.color.R, rect.color.G, rect.color.B, rect.color.A),
-                                    0.0f, ImDrawFlags_Closed, boxtk * scaleFactor
-                                );
-                                break;
+                            if (!snapshot->m_clientShell.inGame())
+                            {
+                                snapshot->enemies.clear();
                             }
 
-                        }
+                            bool isAlly = (enemy.Team == snapshot->localTeam);
+
+                            if (Filterteams && isAlly)
+                                continue;
+
+                            if (enemy.IsDead)
+                                continue;
 
 
-                        if (showEspLines && !rect.isAlly && snapshot->m_clientShell.inGame()) {
-
-                            auto PRIME = snapshot->drawPrim;
-                            int vpWidth = PRIME.viewport.Width;
-                            int vpHeight = PRIME.viewport.Height;
-                            ImVec2 viewportCenter(vpWidth * 0.5f, vpHeight);
-                            ImVec2 enemyScreenPos(rect.x + rect.w / 2, rect.y + rect.h / 2);
-
-                            float midX = (viewportCenter.x + enemyScreenPos.x) / 2.0f;
-
-                            float distance = sqrtf(powf(enemyScreenPos.x - viewportCenter.x, 2) + powf(enemyScreenPos.y - viewportCenter.y, 2));
-                            float arcHeight = distance * 0.2f;
-                            float animOffset = sinf(ImGui::GetTime() * 3.0f) * 10.0f;
-
-                            float midY = (std::min)(viewportCenter.y, enemyScreenPos.y) - arcHeight + animOffset;
-
-                            ImVec2 p2(midX, midY);
-                            ImVec2 p3(midX, midY);
-
-                            ImU32 colU32 = IM_COL32(g_ESPLineColor.R, g_ESPLineColor.G, g_ESPLineColor.B, g_ESPLineColor.A);
-
-                            draw->AddBezierCubic(viewportCenter, p2, p3, enemyScreenPos, colU32, 6.0f,10);
-                        }
+                            D3DXVECTOR3 headPos = enemy.HeadPos;
+                            D3DXVECTOR3 footPos = enemy.FootPos;
 
 
 
-                        if (Flogs[1]) {
+                            if (!EngineW2S(snapshot->drawPrim, &headPos) || !EngineW2S(snapshot->drawPrim, &footPos))
+                                continue;
 
 
-                            float healthPercent = std::clamp(static_cast<float>(enemy.Health) / 100.0f, 0.0f, 1.0f);
+                            float height = fabs(footPos.y - headPos.y) * 1.15f;
+                            float width = height * 0.6f;
 
-                            float barWidth = 5.0f + hptk;
-                            float barHeight = rect.h * healthPercent;
-                            float barX = rect.x - barWidth - 5;
-                            float barY = rect.y + rect.h - barHeight;
+                            float x = headPos.x - width / 2;
+                            float y = headPos.y - (height * 0.15f);
 
-
-                            draw->AddRectFilled(
-                                ImVec2(barX, rect.y),
-                                ImVec2(barX + barWidth, rect.y + rect.h),
-                                IM_COL32(50, 50, 50, 150)
-                            );
+                            RGBA finalColor = isAlly ? g_AllyColor : g_EnemyColor;
 
 
-                            draw->AddRectFilled(
-                                ImVec2(barX, barY),
-                                ImVec2(barX + barWidth, rect.y + rect.h),
-                                GetHealthColor(healthPercent)
-                            );
+                            float dx = enemy.AbsPos.x - snapshot->localAbsPos.x;
+                            float dy = enemy.AbsPos.y - snapshot->localAbsPos.y;
+                            float dz = enemy.AbsPos.z - snapshot->localAbsPos.z;
+                            float distanceMeters = std::fmaxf((sqrtf(dx * dx + dy * dy + dz * dz) - 400.0f) / 100.0f, 0.0f);
+
+                            float scaleFactor = std::clamp(1.5f - (distanceMeters / 50.0f), 0.6f, 1.2f);
+
+                            if (fov == 0 || distanceMeters > fov) continue;
 
 
-                            draw->AddRect(
-                                ImVec2(barX, rect.y),
-                                ImVec2(barX + barWidth, rect.y + rect.h),
-                                IM_COL32(255, 255, 255, 255),
-                                0.0f, 0, 1.0f
-                            );
+                            std::string playerName = std::string(enemy.Name, strnlen(enemy.Name, sizeof(enemy.Name)));
 
 
-                        }
+                            RectData rect;
+                            rect.x = x;
+                            rect.y = y;
+                            rect.w = width;
+                            rect.h = height;
+                            rect.color = finalColor;
+                            rect.playerName = playerName;
+                            rect.currentHP = enemy.Health;
+                            rect.maxHP = 100;
+                            rect.headPos = headPos;
+                            rect.isAlly = (enemy.Team == snapshot->localTeam);
 
 
 
-                        if (Flogs[2]) {
-                            ImVec2 textSize = ImGui::CalcTextSize(rect.playerName.c_str());
-                            draw->AddText(ImVec2(rect.x + (rect.w - textSize.x) * 0.5f, rect.y - textSize.y - 2.0f),
-                                IM_COL32(g_NameColor.R, g_NameColor.G, g_NameColor.B, g_NameColor.A)
-                                , rect.playerName.c_str());
-                        }
+                            if (Flogs[0]) {
 
-                        if (Flogs[3]) {
-                            char distanceText[32];
-                            sprintf(distanceText, "%.1fm", distanceMeters);
+                                float headRadius = hdtk * 0.6f;
+                                ImVec2 headCenter = ImVec2(headPos.x, headPos.y - headRadius * 0.4f);
 
-                            ImVec2 textSize = ImGui::CalcTextSize(distanceText);
-                            float textX = rect.x + (rect.w - textSize.x) * 0.5f;
-                            float textY = rect.y + rect.h + 2.0f;
+                                draw->AddCircle(
+                                    headCenter,
+                                    headRadius,
+                                    IM_COL32(g_HeadColor.R, g_HeadColor.G, g_HeadColor.B, g_HeadColor.A),
+                                    20,
+                                    0.5f + hdtk
+                                );
+                            }
+                            
+                            if (Dcheckbox) {
 
-                            draw->AddText(
-                                ImVec2(textX, textY),
-                                IM_COL32(255, 255, 255, 255),
-                                distanceText
-                            );
-                        }
+                                
+                                switch (esptype) {
+                                case 0:
+                                    draw->AddRect(
+                                        ImVec2(rect.x, rect.y),
+                                        ImVec2(rect.x + rect.w, rect.y + rect.h),
+                                        IM_COL32(rect.color.R, rect.color.G, rect.color.B, rect.color.A),
+                                        0.0f, ImDrawFlags_Closed, boxtk * scaleFactor
+                                    );
+                                    break;
 
-                        if (Flogs[4]) {
-                            ImGui::SetCursorPos(ImVec2(254, 23));
-                            ImVec2 pos1 = ImGui::GetCursorScreenPos();
-                            draw->AddText(ImVec2(pos1.x, pos1.y), ImColor(255, 255, 255, 255), "M416");
-                        }
+                                case 1:
+                                    DrawCornerBox(rect.x, rect.y, rect.w, rect.h, boxtk * scaleFactor, rect.color);
+                                    break;
 
-                        if (Bonecheckbox  && !rect.isAlly)
-                        {
-                             
-                             
+                                case 2:
+                                    draw->AddRectFilled(
+                                        ImVec2(static_cast<float>(rect.x), static_cast<float>(rect.y)),
+                                        ImVec2(static_cast<float>(rect.x + rect.w), static_cast<float>(rect.y + rect.h)),
+                                        IM_COL32(rect.color.R, rect.color.G, rect.color.B, rect.color.A / 3)
+                                    ); 
 
-                            std::vector<int>  boneGroups = {
-                             
-                                 6,  5,  4,  3,   1 ,
-                                21, 22, 23,  25, 26 ,
-                                27,  14, 15, 16, 17 ,
-                                 7, 8, 9 ,
-                                10, 
-                            };
-                             
+                                    draw->AddRect(
+                                        ImVec2(static_cast<float>(rect.x), static_cast<float>(rect.y)),
+                                        ImVec2(static_cast<float>(rect.x + rect.w), static_cast<float>(rect.y + rect.h)),
+                                        IM_COL32(rect.color.R, rect.color.G, rect.color.B, rect.color.A),
+                                        0.0f, ImDrawFlags_Closed, boxtk * scaleFactor
+                                    );
+                                    break;
+                                }
 
-                            for (auto& enemy : snapshot->enemies)
+                            }
+
+
+                            if (showEspLines && !rect.isAlly && snapshot->m_clientShell.inGame()) {
+
+                                auto PRIME = snapshot->drawPrim;
+                                int vpWidth = PRIME.viewport.Width;
+                                int vpHeight = PRIME.viewport.Height;
+                                ImVec2 viewportCenter(vpWidth * 0.5f, vpHeight);
+                                ImVec2 enemyScreenPos(rect.x + rect.w / 2, rect.y + rect.h / 2);
+
+                                float midX = (viewportCenter.x + enemyScreenPos.x) / 2.0f;
+
+                                float distance = sqrtf(powf(enemyScreenPos.x - viewportCenter.x, 2) + powf(enemyScreenPos.y - viewportCenter.y, 2));
+                                float arcHeight = distance * 0.2f;
+                                float animOffset = sinf(ImGui::GetTime() * 3.0f) * 10.0f;
+
+                                float midY = (std::min)(viewportCenter.y, enemyScreenPos.y) - arcHeight + animOffset;
+
+                                ImVec2 p2(midX, midY);
+                                ImVec2 p3(midX, midY);
+
+                                ImU32 colU32 = IM_COL32(g_ESPLineColor.R, g_ESPLineColor.G, g_ESPLineColor.B, g_ESPLineColor.A);
+
+                                draw->AddBezierCubic(viewportCenter, p2, p3, enemyScreenPos, colU32, 6.0f, 10);
+                            }
+
+
+
+                            if (Flogs[1]) {
+
+
+                                float healthPercent = std::clamp(static_cast<float>(enemy.Health) / 100.0f, 0.0f, 1.0f);
+
+                                float barWidth = 5.0f + hptk;
+                                float barHeight = rect.h * healthPercent;
+                                float barX = rect.x - barWidth - 5;
+                                float barY = rect.y + rect.h - barHeight;
+
+
+                                draw->AddRectFilled(
+                                    ImVec2(barX, rect.y),
+                                    ImVec2(barX + barWidth, rect.y + rect.h),
+                                    IM_COL32(50, 50, 50, 150)
+                                );
+
+
+                                draw->AddRectFilled(
+                                    ImVec2(barX, barY),
+                                    ImVec2(barX + barWidth, rect.y + rect.h),
+                                    GetHealthColor(healthPercent)
+                                );
+
+
+                                draw->AddRect(
+                                    ImVec2(barX, rect.y),
+                                    ImVec2(barX + barWidth, rect.y + rect.h),
+                                    IM_COL32(255, 255, 255, 255),
+                                    0.0f, 0, 1.0f
+                                );
+
+
+                            }
+
+
+
+                            if (Flogs[2]) {
+                                ImVec2 textSize = ImGui::CalcTextSize(rect.playerName.c_str());
+                                draw->AddText(ImVec2(rect.x + (rect.w - textSize.x) * 0.5f, rect.y - textSize.y - 2.0f),
+                                    IM_COL32(g_NameColor.R, g_NameColor.G, g_NameColor.B, g_NameColor.A)
+                                    , rect.playerName.c_str());
+                            }
+
+                            if (Flogs[3]) {
+                                char distanceText[32];
+                                sprintf(distanceText, "%.1fm", distanceMeters);
+
+                                ImVec2 textSize = ImGui::CalcTextSize(distanceText);
+                                float textX = rect.x + (rect.w - textSize.x) * 0.5f;
+                                float textY = rect.y + rect.h + 2.0f;
+
+                                draw->AddText(
+                                    ImVec2(textX, textY),
+                                    IM_COL32(255, 255, 255, 255),
+                                    distanceText
+                                );
+                            }
+
+                            if (Flogs[4]) {
+                                ImGui::SetCursorPos(ImVec2(254, 23));
+                                ImVec2 pos1 = ImGui::GetCursorScreenPos();
+                                draw->AddText(ImVec2(pos1.x, pos1.y), ImColor(255, 255, 255, 255), "M416");
+                            }
+
+
+                            if (draw_radar)
                             {
 
-                                if (enemy.IsDead || enemy.Team == snapshot->localTeam)
-                                    continue;
+                                try
+                                {
 
-                                auto positions = GetAllBones(mem, (uintptr_t)enemy.hObject, boneGroups);
+                                    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+                                     
 
-                                DrawAllBones(
-                                    draw,
-                                    mem,
-                                    (uintptr_t)enemy.hObject,
-                                    boneGroups,
-                                    positions,
-                                    snapshot->drawPrim,
-                                    IM_COL32(g_ESPLineColor.R, g_ESPLineColor.G, g_ESPLineColor.B, g_ESPLineColor.A)
-                                );
+                                        float radarSizeFactor = viewport->Size.y * 0.2f;
+                                        ImVec2 radarPos = viewport->Pos + ImVec2(20, 20);
+                                        ImVec2 radarSize = ImVec2(radarSizeFactor, radarSizeFactor);
+                                        float radarRadius = 150.0f;
+                                        float radarMaxDistance = 7000.0f;
+                                        if (!snapshot)
+                                        {
+                                            LOG("Radar Crash: snapshot is nullptr!");
+                                            draw_radar = FALSE;
+                                        }
+                                        ImGui::SetNextWindowPos(radarPos, ImGuiCond_Always);
+                                        ImGui::SetNextWindowSize(radarSize);
+                                        ImGui::SetNextWindowBgAlpha(0.0f);
+                                        if (ImGui::Begin("Radar", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground))
+                                        {
+                                            ImVec2 radarCenter = ImGui::GetWindowSize() * 0.5f;
+                                            ImDrawList* drawList = ImGui::GetWindowDrawList();
+                                            ImVec2 radarScreenPos = ImGui::GetWindowPos();
+
+
+                                            drawList->AddCircle(radarScreenPos + radarCenter, radarRadius, IM_COL32(255, 255, 255, 100), 64, 1.5f);
+                                            
+
+
+
+                                            drawList->AddCircleFilled(radarScreenPos + radarCenter, 5.0f, IM_COL32(255, 255, 255, 255));
+                                            for (const auto& enemy : snapshot->enemies)
+                                            {
+                                                if (enemy.IsDead || enemy.Team == snapshot->localTeam)
+                                                    continue;
+
+
+                                                float playerYaw = fmodf(snapshot->localYaw * (180.0f / M_PI), 360.0f); // Convert to degrees if necessary
+                                                if (playerYaw < 0) playerYaw += 360.0f;
+
+                                                D3DXVECTOR3 offset = enemy.AbsPos - snapshot->localAbsPos;
+
+                                                float cosYaw = cosf(-playerYaw * (M_PI / 180.0f));
+                                                float sinYaw = sinf(-playerYaw * (M_PI / 180.0f));
+                                                float rotatedX = (offset.x * cosYaw + offset.z * sinYaw);
+                                                float rotatedZ = (offset.z * cosYaw - offset.x * sinYaw);
+
+
+                                                float scaleFactor = radarRadius / radarMaxDistance;
+                                                ImVec2 enemyPos = radarCenter + ImVec2(rotatedX * scaleFactor, -rotatedZ * scaleFactor);
+                                                ImVec2 direction = enemyPos - radarCenter;
+                                                float distance = sqrtf(enemyPos.x * enemyPos.x + enemyPos.y * enemyPos.y);
+                                                if (distance > radarRadius - 10)
+                                                {
+                                                    enemyPos = radarCenter + (enemyPos - radarCenter) * ((radarRadius - 10) / distance);
+                                                }
+
+
+                                                float enemyAngle = atan2f(rotatedX, rotatedZ);
+
+
+                                                float arrowSize = radarRadius * 0.09f;
+                                                ImVec2 base = radarScreenPos + enemyPos;
+                                                ImVec2 left = base + ImVec2(cos(enemyAngle + 2.6f) * arrowSize, sin(enemyAngle + 2.6f) * arrowSize);
+                                                ImVec2 right = base + ImVec2(cos(enemyAngle - 2.6f) * arrowSize, sin(enemyAngle - 2.6f) * arrowSize);
+
+                                                drawList->AddTriangleFilled(base, left, right, IM_COL32(255, 0, 0, 255));
+                                            }
+
+                                            ImGui::End();
+                                        }
+                                    }
+                                    catch (const std::exception& e)
+                                    {
+                                        LOG("Radar Exception: %s", e.what());
+                                    }
+                                    catch (...)
+                                    {
+                                        LOG("Radar Exception: Unknown error!");
+                                    }
+                                }
+                          
+
+                            if (Bonecheckbox && !rect.isAlly)
+                            {
+
+
+
+                                std::vector<int>  boneGroups = {
+
+                                     6,  5,  4,  3,   1 ,
+                                    21, 22, 23,  25, 26 ,
+                                    27,  14, 15, 16, 17 ,
+                                     7, 8, 9 ,
+                                    10,
+                                };
+
+
+                                for (auto& enemy : snapshot->enemies)
+                                {
+
+                                    if (enemy.IsDead || enemy.Team == snapshot->localTeam)
+                                        continue;
+
+                                    auto positions = GetAllBones(mem, (uintptr_t)enemy.hObject, boneGroups);
+
+                                    DrawAllBones(
+                                        draw,
+                                        mem,
+                                        (uintptr_t)enemy.hObject,
+                                        boneGroups,
+                                        positions,
+                                        snapshot->drawPrim,
+                                        IM_COL32(g_ESPLineColor.R, g_ESPLineColor.G, g_ESPLineColor.B, g_ESPLineColor.A)
+                                    );
+                                }
                             }
+
                         }
+
 
                     }
 
-
                 }
-
-                  
-                 
-                 
-
-
             }
-            }
-
+            
         }
       
         ImGui::Render();
@@ -1958,47 +2010,57 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
          
         return 0;  
     }
-    case WM_ACTIVATE: 
-     {
+    case WM_ACTIVATE:
+    {
         if (LOWORD(wParam) == WA_INACTIVE) {
 
             if (overlayMode == 0) {
+               
+               allow_clicks = false;
                 LONG exStyle = GetWindowLong(hWnd, GWL_EXSTYLE);
 
-                
-                    SetWindowLong(hWnd, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
-                    
-                    //// SetWindowLong(hwndMenu, GWL_EXSTYLE, exStyle | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE);
-                    //SetWindowPos(hWnd, HWND_NOTOPMOST, 0, 0, 0, 0,
-                    // SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-                
-                
-                
+                 
+                SetWindowLong(hWnd, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
+                SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+
             }
             else
             {
 
-                if (overlayMode == 0)
-                {
-                    SetForegroundWindow(hWnd);
+                 
+
+                  //  SetForegroundWindow(hWnd);
+                    allow_clicks = false;
                     LONG exStyle = GetWindowLong(hWnd, GWL_EXSTYLE);
-                    exStyle &= ~WS_EX_LAYERED;
-                    SetWindowLong(hWnd, GWL_EXSTYLE, exStyle);
-                    //SetWindowPos(hWnd, HWND_NOTOPMOST, 0, 0, 0, 0,
-                      // SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+
+
+                    SetWindowLong(hWnd, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
+                    SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+                    //NG exStyle = GetWindowLong(hWnd, GWL_EXSTYLE);
+                    //Style &= ~WS_EX_LAYERED;
+                    //SetWindowLong(hWnd, GWL_EXSTYLE, exStyle);
+                   
                     SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
-                }
+                 
             }
 
 
         }
         else {
 
-            SetWindowPos(hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+           allow_clicks = false;
+        
+             
+           
+            SetWindowLongA(hWnd, GWL_EXSTYLE, GetWindowLongA(hWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
+           
         }
         return 0;
     }
+
+
+
 
 
 

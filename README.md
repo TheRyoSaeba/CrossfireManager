@@ -1,5 +1,8 @@
  [![Discord](https://github.com/user-attachments/assets/4417118b-ea28-4527-b553-6016630e2cc7)](https://discordapp.com/users/makimura.dev)
- 
+
+ The Cheat Requires these specific DLLS with these specific Versions, or it WON'T WORK AS INTENDED. I warned you
+ [MakiDLL.zip](https://github.com/user-attachments/files/19282841/MakiDLL.zip)
+
 ## Features
 - Visuals
   - ESP Type (Corner, Regular,Filled)

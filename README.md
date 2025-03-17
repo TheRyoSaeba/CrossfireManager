@@ -16,6 +16,7 @@
    - ESP Colors(Bones, Lines etc)
    - Other
      - Draggable Radar
+     - Crosshair Notification
      - Resizeable box/head/bones
 
 - Aimbot(Soon™)

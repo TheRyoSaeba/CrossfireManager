@@ -3,6 +3,7 @@
 ## Features
 - Visuals
   - ESP Type (Corner, Regular,Filled)
+  - ESP Preview
   - ESP Lines
   - Selection
     - Head
@@ -33,7 +34,12 @@
   - Have no recoil/no reload but the current method of backing up and rewriting is pretty ghastly
   - Working on third person and a bunch of other stuff 
     
+![preview](https://github.com/user-attachments/assets/2018d25d-3cce-44d8-a061-14bc1792d107)
+ 
 
-![working](https://github.com/user-attachments/assets/a16b3df8-d926-42c3-9bf3-d213824cf151)
+
+ - Credits
+ - IMGUI base is from UC
+ - tutorials from MPGH
 
  

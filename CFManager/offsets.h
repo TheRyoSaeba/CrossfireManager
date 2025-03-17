@@ -1,5 +1,5 @@
 ﻿#pragma once
-
+#include "Overlay.h"
 #include <cstdint>
 #include <d3d9.h>
 #include <DirectXMath.h>
@@ -15,17 +15,20 @@
 #include <sstream>
 #include <shlobj.h>        
  
+ 
 static bool showOffsetFinder = false;
 const std::string CONFIG_FILE = "offsets.json";
 using namespace DirectX;
 namespace fs = std::filesystem;
- 
+inline std::string update_status = "Idle";
 inline uintptr_t CFBASE = 0;
 inline uintptr_t CFSHELL = 0;
 inline uintptr_t LT_SHELL = 0;
 constexpr int MAX_PLAYERS = 16;
 inline D3DVIEWPORT9 g_view_port;
 using json = nlohmann::json;
+
+
  
 namespace offs {
 
@@ -106,16 +109,20 @@ extern bool Distancecheckbox;
 extern bool weaponcheckbox;
 extern bool Filterteams;
 extern bool showFPS;
+extern bool crosshair_notify;
 extern bool Bonecheckbox;
 extern bool showEspLines;
 extern int esptype;
 extern int fov;
-extern float boxtk ;
-extern float hptk  ;
-extern float hdtk ;
+extern float boxtk;
+extern float hptk;
+extern float hdtk;
 extern float bonetk;
-
+extern bool draw_radar;
+ 
 extern bool Flogs[6];
+ 
+
 inline json SerializeCheatConfig() {
     json j;
     j["Dcheckbox"] = Dcheckbox;
@@ -127,26 +134,24 @@ inline json SerializeCheatConfig() {
     j["Headcheckbox"] = Headcheckbox;
     j["Healthcheckbox"] = Healthcheckbox;
     j["showInfoText"] = showInfoText;
-   
     j["Namecheckbox"] = Namecheckbox;
     j["Distancecheckbox"] = Distancecheckbox;
     j["weaponcheckbox"] = weaponcheckbox;
     j["Filterteams"] = Filterteams;
     j["showFPS"] = showFPS;
- 
+    j["draw_radar"] = draw_radar;
     j["Bonecheckbox"] = Bonecheckbox;
     j["showEspLines"] = showEspLines;
     j["esptype"] = esptype;
-    
-   
     j["fov"] = fov;
     j["boxtk"] = boxtk;
     j["hptk"] = hptk;
     j["hdtk"] = hdtk;
     j["bonetk"] = bonetk;
- 
-
+    j["crosshair_notify"] = crosshair_notify;
      
+    
+
     {
         std::vector<bool> flogsVec(std::begin(Flogs), std::end(Flogs));
         j["Flogs"] = flogsVec;
@@ -165,23 +170,23 @@ inline void DeserializeCheatConfig(const json& j) {
     Headcheckbox = j.value("Headcheckbox", Headcheckbox);
     Healthcheckbox = j.value("Healthcheckbox", Healthcheckbox);
     showInfoText = j.value("showInfoText", showInfoText);
-   
+    draw_radar = j.value("draw_radar", draw_radar);
     Namecheckbox = j.value("Namecheckbox", Namecheckbox);
     Distancecheckbox = j.value("Distancecheckbox", Distancecheckbox);
     weaponcheckbox = j.value("weaponcheckbox", weaponcheckbox);
     Filterteams = j.value("Filterteams", Filterteams);
     showFPS = j.value("showFPS", showFPS);
-     
     Bonecheckbox = j.value("Bonecheckbox", Bonecheckbox);
     showEspLines = j.value("showEspLines", showEspLines);
     esptype = j.value("esptype", esptype);
-    
     fov = j.value("fov", fov);
     boxtk = j.value("boxtk", boxtk);
     hptk = j.value("hptk", hptk);
     hdtk = j.value("hdtk", hdtk);
-   
-     
+    hdtk = std::clamp(hdtk, 0.0f, 10.0f);
+    bonetk = j.value("bonetk", bonetk);
+    crosshair_notify = j.value("crosshair_notify", crosshair_notify);
+
     if (j.contains("Flogs") && j["Flogs"].is_array())
     {
         auto arr = j["Flogs"];
@@ -191,7 +196,7 @@ inline void DeserializeCheatConfig(const json& j) {
         }
     }
 }
- 
+
 
 inline std::string getCheatConfigDir() {
     char path[MAX_PATH];
@@ -204,7 +209,7 @@ inline std::string getCheatConfigDir() {
         }
         return docPath.string();
     }
-    
+
     fs::path fallback("configs");
     if (!fs::exists(fallback))
         fs::create_directory(fallback);
@@ -217,7 +222,7 @@ inline std::string getCheatConfigPath(const std::string& configName) {
     return p.string();
 }
 
- 
+
 inline void SaveCheatConfig(const std::string& configName) {
     json j = SerializeCheatConfig();
     std::ofstream file(getCheatConfigPath(configName));
@@ -227,7 +232,7 @@ inline void SaveCheatConfig(const std::string& configName) {
     file.close();
 }
 
- 
+
 inline bool LoadCheatConfig(const std::string& configName) {
     std::ifstream file(getCheatConfigPath(configName));
     if (!file.is_open())
@@ -245,7 +250,7 @@ inline bool LoadCheatConfig(const std::string& configName) {
     return true;
 }
 
- 
+
 inline std::vector<std::string> GetCheatConfigList() {
     std::vector<std::string> configList;
     fs::path dir(getCheatConfigDir());
@@ -274,7 +279,7 @@ inline std::string getConfigPath() {
         docPath /= "offsets.json";
         return docPath.string();
     }
-   
+
     return "offsets.json";
 }
 
@@ -301,7 +306,7 @@ inline bool LoadOffsets() {
     }
 
     try {
-        
+
         LT_SHELL = std::stoull(j["LT_SHELL"].get<std::string>(), nullptr, 16);
         offs::MYOFFSET = static_cast<int32_t>(std::stoull(j["MYOFFSET"].get<std::string>(), nullptr, 16));
         offs::dwCPlayerSize = static_cast<int32_t>(std::stoull(j["dwCPlayerSize"].get<std::string>(), nullptr, 16));
@@ -315,7 +320,7 @@ inline bool LoadOffsets() {
 }
 
 
- 
+
 inline void SaveOffsets() {
     json j;
     j["LT_SHELL"] = toHex(LT_SHELL);
@@ -331,60 +336,59 @@ inline void SaveOffsets() {
     file << std::setw(4) << j;
     file.close();
 }
-  
-
- inline void ClearConfig() {
-     std::remove(CONFIG_FILE.c_str());  
-  
- }
 
 
-
- inline bool UpdateOffsets(Memory& mem) {
-     std::jthread([&mem](std::stop_token stoken) {
-     if (LoadOffsets()) {
-
-         return true;
-     }
-     size_t CSHELL_SIZE = mem.GetBaseSize("CShell_x64.dll");
-     if (!CFSHELL || CSHELL_SIZE == 0) return false;
-     size_t CFBASE_SIZE = mem.GetBaseSize("crossfire.exe");
-     if (!CFBASE || CFBASE_SIZE == 0) return false;
-     uintptr_t FirstsigResult =
-         mem.FindSignature(offs::LT_PATTERN, CFSHELL, CFSHELL + CSHELL_SIZE);
-     if (!FirstsigResult) return false;
-
-     int32_t offset = mem.Read<int32_t>(FirstsigResult + 3);
-     LT_SHELL = FirstsigResult + 7 + offset;
-
-     uintptr_t SecondSigResult = mem.FindSignature(offs::MY_OFFSET_PATTERN,
-         CFSHELL, CFSHELL + CSHELL_SIZE);
-     if (!SecondSigResult) return false;
-     offs::MYOFFSET = mem.Read<int32_t>(SecondSigResult + 3);
-
-     
-
-          
-
-     uintptr_t ThirdSigResult = mem.FindSignature(offs::MY_PLAYERSIZE_PATTERN,
-         CFSHELL, CFSHELL + CSHELL_SIZE);
-     if (!ThirdSigResult) return false;
+inline void ClearConfig() {
+    std::remove(getConfigPath().c_str());
+}
 
 
-     offs::dwCPlayerSize = mem.Read<int32_t>(ThirdSigResult + 3);
-   
-      
-     uintptr_t FourthSigResult = mem.FindSignature(offs::DRAWPRIM_PATTERN, CFBASE, CFBASE + CFBASE_SIZE);
-     if (!FourthSigResult)
-         return false;
-     int32_t drawprimOffset = mem.Read<int32_t>(FourthSigResult + 3);
-     offs::ILTDrawPrim = FourthSigResult + 7 + drawprimOffset;
-    
-     SaveOffsets();
-     return (LT_SHELL <= CFSHELL + CSHELL_SIZE);
-         }).detach();
 
-     return true;  
- }
 
+inline bool UpdateOffsets(Memory& mem) {
+    std::jthread([&mem](std::stop_token stoken) {
+        if (LoadOffsets()) {
+
+            return true;
+        }
+        size_t CSHELL_SIZE = mem.GetBaseSize("CShell_x64.dll");
+        if (!CFSHELL || CSHELL_SIZE == 0) return false;
+        size_t CFBASE_SIZE = mem.GetBaseSize("crossfire.exe");
+        if (!CFBASE || CFBASE_SIZE == 0) return false;
+        uintptr_t FirstsigResult =
+            mem.FindSignature(offs::LT_PATTERN, CFSHELL, CFSHELL + CSHELL_SIZE);
+        if (!FirstsigResult) return false;
+
+        int32_t offset = mem.Read<int32_t>(FirstsigResult + 3);
+        LT_SHELL = FirstsigResult + 7 + offset;
+
+        uintptr_t SecondSigResult = mem.FindSignature(offs::MY_OFFSET_PATTERN,
+            CFSHELL, CFSHELL + CSHELL_SIZE);
+        if (!SecondSigResult) return false;
+        offs::MYOFFSET = mem.Read<int32_t>(SecondSigResult + 3);
+
+
+
+
+
+        uintptr_t ThirdSigResult = mem.FindSignature(offs::MY_PLAYERSIZE_PATTERN,
+            CFSHELL, CFSHELL + CSHELL_SIZE);
+        if (!ThirdSigResult) return false;
+
+
+        offs::dwCPlayerSize = mem.Read<int32_t>(ThirdSigResult + 3);
+
+
+        uintptr_t FourthSigResult = mem.FindSignature(offs::DRAWPRIM_PATTERN, CFBASE, CFBASE + CFBASE_SIZE);
+        if (!FourthSigResult)
+            return false;
+        int32_t drawprimOffset = mem.Read<int32_t>(FourthSigResult + 3);
+        offs::ILTDrawPrim = FourthSigResult + 7 + drawprimOffset;
+
+        SaveOffsets();
+        return (LT_SHELL <= CFSHELL + CSHELL_SIZE);
+        }).detach();
+
+    return true;
+}
 

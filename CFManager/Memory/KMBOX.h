@@ -364,21 +364,26 @@ KMBXBOX_B_API void send_command(HANDLE hSerial, const std::string& command);
  
 class KMBXBOX_B_API KmBoxBManager {
 private:
-    HANDLE hSerial;
+	HANDLE hSerial;
+	 
 public:
-    int init();  // Initialize the port and connection
-    void km_move(int X, int Y); 
- 
-    void km_move_auto(int X, int Y, int runtime);  // Move the mouse with runtime
-    void km_click();  // Perform a left-click
-    bool km_right(bool down );
+	 
+	int init();
+	void km_move(int X, int Y);
+	int km_getpos(int& x, int& y);
+	void km_move_auto(int X, int Y, int runtime);
+	void km_click();
+	bool km_right(bool down);
 	void lock_mx();
 	void lock_my();
 	void lock_mr();
 	void unlock_mx();
 	void unlock_mr();
 	void unlock_my();
-    HANDLE getSerialHandle() const { return hSerial; }
+ 
+	 
+	HANDLE getSerialHandle() const;
+	 
 };
 
 class KMBXBOX_NET_API KmBoxMouse {

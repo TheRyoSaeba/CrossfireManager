@@ -10,7 +10,8 @@
 #include <d3dx9math.h>
 #include <cstddef>
  
-
+ 
+constexpr size_t NUM_BONES = 19;
 namespace ESP {
 
     
@@ -24,9 +25,8 @@ namespace ESP {
         D3DXVECTOR3 FootPos;
         D3DXVECTOR3 AbsPos;
         bool IsDead;
-
-         
-       
+        std::array<D3DXVECTOR3, NUM_BONES> bones;
+        
     };
 
 
@@ -112,7 +112,7 @@ namespace ESP {
     private:
 
         std::chrono::steady_clock::time_point m_lastEntityUpdate;
-        static constexpr std::chrono::milliseconds ENTITY_UPDATE_INTERVAL{ 600 };
+        static constexpr std::chrono::milliseconds ENTITY_UPDATE_INTERVAL{ 900 };
         KLASSES::LTClientShell m_clientShell;
         KLASSES::pPlayer m_localPlayer;
         D3DXVECTOR3 m_localAbsolutePosition;
@@ -139,7 +139,6 @@ namespace ESP {
             return true;
         }
         bool UpdateLocalPlayer2(Memory& mem) {
-
             m_localPlayer = m_clientShell.GetLocalPlayer(mem);
             if (m_localPlayer.hObject != nullptr) {
                 if (!m_scatterHandle) {
@@ -149,24 +148,59 @@ namespace ESP {
                 uintptr_t characFXAddr = reinterpret_cast<uintptr_t>(m_localPlayer.characFX);
                 uintptr_t clntBaseAddr = reinterpret_cast<uintptr_t>(m_clientShell.CPlayerClntBase);
 
+                
+                mem.AddScatterReadRequest(m_scatterHandle,
+                    playerAddr + offsetof(KLASSES::obj, AbsolutePosition),
+                    &m_localAbsolutePosition, sizeof(D3DXVECTOR3));
 
+                
+                uint32_t boneArrayPtr = 0;
+                mem.AddScatterReadRequest(m_scatterHandle,
+                    playerAddr + offsetof(KLASSES::obj, BoneArray),
+                    &boneArrayPtr, sizeof(uint32_t));
 
+                 
+                mem.AddScatterReadRequest(m_scatterHandle,
+                    characFXAddr + offsetof(KLASSES::pCharacterFx, isDead),
+                    &m_localIsDead, sizeof(bool));
+                mem.AddScatterReadRequest(m_scatterHandle,
+                    clntBaseAddr + offsetof(KLASSES::pPlayerClntBase, Yaw),
+                    &m_localYaw, sizeof(float));
+                mem.AddScatterReadRequest(m_scatterHandle,
+                    clntBaseAddr + offsetof(KLASSES::pPlayerClntBase, Pitch),
+                    &m_localPitch, sizeof(float));
 
-                mem.AddScatterReadRequest(m_scatterHandle, playerAddr + offsetof(KLASSES::obj, AbsolutePosition), &m_localAbsolutePosition, sizeof(D3DXVECTOR3));
-               mem.AddScatterReadRequest(m_scatterHandle, playerAddr + offsetof(KLASSES::obj, Head), &m_localHeadPosition, sizeof(D3DXVECTOR3));
-                mem.AddScatterReadRequest(m_scatterHandle, characFXAddr + offsetof(KLASSES::pCharacterFx, isDead), &m_localIsDead, sizeof(bool));
-                mem.AddScatterReadRequest(m_scatterHandle, clntBaseAddr + offsetof(KLASSES::pPlayerClntBase, Yaw), &m_localYaw, sizeof(float));
-                mem.AddScatterReadRequest(m_scatterHandle, clntBaseAddr + offsetof(KLASSES::pPlayerClntBase, Pitch), &m_localPitch, sizeof(float));
+              
                 mem.ExecuteReadScatter(m_scatterHandle);
+
+                
+                if (boneArrayPtr != 0) {
+                    D3DXMATRIX headBoneMatrix;
+                     
+                    uintptr_t headBoneAddr = boneArrayPtr + (6 * sizeof(D3DXMATRIX));
+                    mem.AddScatterReadRequest(m_scatterHandle,
+                        headBoneAddr, &headBoneMatrix, sizeof(D3DXMATRIX));
+                    mem.ExecuteReadScatter(m_scatterHandle);
+
+                   
+                    m_localHeadPosition = D3DXVECTOR3(
+                        headBoneMatrix._14,
+                        headBoneMatrix._24,
+                        headBoneMatrix._34
+                    );
+                }
+                else {
+                    // Fallback if bone pointer is invalid.
+                    m_localHeadPosition = { 0.0f, 0.0f, 0.0f };
+                }
                 return true;
             }
             return false;
         }
-
         bool UpdateLocalPlayer(Memory& mem) {
-          
 
-            
+
+
             int localIdx = mem.Read<int>((uintptr_t)LT_SHELL + offs::MYOFFSET);
 
             uintptr_t localPlayerAddr = LT_SHELL + offs::dwCPlayerStart + (localIdx * sizeof(offs::dwCPlayerSize));
@@ -176,21 +210,21 @@ namespace ESP {
                 m_scatterHandle = mem.CreateScatterHandle();
             }
             else {
-                mem.CloseScatterHandle(m_scatterHandle);  
+                mem.CloseScatterHandle(m_scatterHandle);
             }
-             
-             
+
+
             mem.AddScatterReadRequest(m_scatterHandle, localPlayerAddr, &m_localPlayer, sizeof(offs::dwCPlayerSize));
             auto scatterStart = std::chrono::high_resolution_clock::now();
             mem.ExecuteReadScatter(m_scatterHandle);
             auto scatterEnd = std::chrono::high_resolution_clock::now();
 
-            
+
 
             if (!m_localPlayer.hObject) {
                 return false;
             }
-            
+
 
             uintptr_t playerAddr = reinterpret_cast<uintptr_t>(m_localPlayer.hObject);
             uintptr_t characFXAddr = reinterpret_cast<uintptr_t>(m_localPlayer.characFX);
@@ -202,20 +236,20 @@ namespace ESP {
             mem.AddScatterReadRequest(m_scatterHandle, clntBaseAddr + offsetof(KLASSES::pPlayerClntBase, Yaw), &m_localYaw, sizeof(float));
             mem.AddScatterReadRequest(m_scatterHandle, clntBaseAddr + offsetof(KLASSES::pPlayerClntBase, Pitch), &m_localPitch, sizeof(float));
 
-           
+
             mem.ExecuteReadScatter(m_scatterHandle);
-           
 
-             
-               
 
-          
-           
+
+
+
+
+
             return true;
         }
 
-      
-        
+
+
         void UpdateEntities(Memory& mem) {
             const auto now = std::chrono::steady_clock::now();
             if ((now - m_lastEntityUpdate < ENTITY_UPDATE_INTERVAL) ||
@@ -242,17 +276,17 @@ namespace ESP {
                         targetBuffer[i] = m_clientShell.GetPlayerByIndex(i);
                     }
                 }
-               
+
                 uint32_t newChecksum = 0;
-                
+
                 for (const auto& player : targetBuffer) {
                     for (size_t j = 0; j < sizeof(player.Name); ++j) {
-                        newChecksum = (newChecksum << 5) - newChecksum + static_cast<uint8_t>(player.Name[j] + static_cast<int>(player.Health) + player.Spectator + player.ClientID );
+                        newChecksum = (newChecksum << 5) - newChecksum + static_cast<uint8_t>(player.Name[j] + static_cast<int>(player.Health) + player.Spectator + player.ClientID);
                     }
-                   
+
                 }
 
-                   
+
                 const auto endTime = std::chrono::steady_clock::now();
                 const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
                 // LOG("[UpdateEntities] Time taken: %lld ms\n", duration.count());
@@ -270,25 +304,23 @@ namespace ESP {
                 }).detach();
         }
 
-
+       
         bool UpdatePositions(Memory& mem) {
-            const auto startTime = std::chrono::steady_clock::now();
-
             std::array<D3DXVECTOR3, MAX_PLAYERS> tempHeadPositions;
             std::array<D3DXVECTOR3, MAX_PLAYERS> tempFootPositions;
             std::array<D3DXVECTOR3, MAX_PLAYERS> tempAbsolutePositions;
             std::array<int8_t, MAX_PLAYERS> tempIsDeadFlags{};
-            std::array<int32_t, MAX_PLAYERS> TempHealth{};
             std::array<uintptr_t, MAX_PLAYERS> tempBoneArrayAddresses{};
+            
             std::array<D3DXMATRIX, MAX_PLAYERS> tempHeadBoneMatrices{};
-            
-            
+
+          
+            std::array<std::array<D3DXVECTOR3, NUM_BONES>, MAX_PLAYERS> tempExtraBones;
 
             const int activeBuffer = m_activeBuffer.load();
             const auto& currentPlayers = m_players[activeBuffer];
 
-
-             
+           
             if (!m_scatterHandle) {
                 m_scatterHandle = mem.CreateScatterHandle();
             }
@@ -296,16 +328,13 @@ namespace ESP {
                 mem.CloseScatterHandle(m_scatterHandle);
                 m_scatterHandle = mem.CreateScatterHandle();
             }
-             
-            // LOG("[UpdatePositions] Scatter handle creation: %lld ms\n",
-               //  std::chrono::duration_cast<std::chrono::milliseconds>(scatterEndTime - scatterStartTime).count());
-
 
             
             for (int i = 0; i < MAX_PLAYERS; ++i) {
                 const auto& p = currentPlayers[i];
-                if (!p.hObject|| p.ClientID == m_localPlayer.ClientID)
+                if (!p.hObject || p.ClientID == m_localPlayer.ClientID)
                     continue;
+
                 uintptr_t playerAddr = reinterpret_cast<uintptr_t>(p.hObject);
                 uintptr_t boneArrayPtrAddr = playerAddr + offsetof(KLASSES::obj, BoneArray);
 
@@ -313,72 +342,99 @@ namespace ESP {
                 mem.AddScatterReadRequest(m_scatterHandle, playerAddr + offsetof(KLASSES::obj, foot), &tempFootPositions[i], sizeof(D3DXVECTOR3));
                 mem.AddScatterReadRequest(m_scatterHandle, playerAddr + offsetof(KLASSES::obj, AbsolutePosition), &tempAbsolutePositions[i], sizeof(D3DXVECTOR3));
                 mem.AddScatterReadRequest(m_scatterHandle, reinterpret_cast<uintptr_t>(p.characFX) + offsetof(KLASSES::pCharacterFx, isDead), &tempIsDeadFlags[i], sizeof(int8_t));
-               
             }
-             
-            //LOG("[UpdatePositions] Scatter setup: %lld ms\n",
-               // std::chrono::duration_cast<std::chrono::milliseconds>(scatterEndTime - scatterStartTime).count());
-
-            // Log first scatter execution
-             
             mem.ExecuteReadScatter(m_scatterHandle);
-             
-            //LOG("[UpdatePositions] First scatter execution: %lld ms\n",
-               // std::chrono::duration_cast<std::chrono::milliseconds>(scatterEndTime - scatterStartTime).count());
 
-            // Log second scatter setup and execution
-            
-            for (int i = 0; i < MAX_PLAYERS; ++i) {
-                if (!tempBoneArrayAddresses[i]) continue;
-               
-                uintptr_t headBoneAddr = tempBoneArrayAddresses[i] + (6 * sizeof(D3DXMATRIX));
-
-                mem.AddScatterReadRequest(m_scatterHandle, headBoneAddr, &tempHeadBoneMatrices[i], sizeof(D3DXMATRIX));
-            }
-
-            mem.ExecuteReadScatter(m_scatterHandle);
-            
-           
-
-
-             
-            for (int i = 0; i < MAX_PLAYERS; ++i) {
-                tempHeadPositions[i] = D3DXVECTOR3(
-                    tempHeadBoneMatrices[i]._14,
-                    tempHeadBoneMatrices[i]._24,
-                    tempHeadBoneMatrices[i]._34
-                );
+            // Second pass: Cache bone data.
+            if (Bonecheckbox) {
                 
-                
-
-            }
-            
-                m_headPositions = tempHeadPositions;
-                m_footPositions = tempFootPositions;
-                m_absolutePositions = tempAbsolutePositions;
-                m_isDeadFlags = tempIsDeadFlags;
+                std::vector<int> boneGroups = {
+                    6, 5, 4, 3, 1,
+                    21, 22, 23, 25, 26,
+                    27, 14, 15, 16, 17,
+                    7, 8, 9,
+                    10,
+                };
                
-                m_minimalPlayers.clear();
-                m_minimalPlayers.reserve(MAX_PLAYERS);
+
                 for (int i = 0; i < MAX_PLAYERS; ++i) {
-                    const auto& p = currentPlayers[i];
-                    if (!p.hObject || p.ClientID == m_localPlayer.ClientID)
+                    if (!tempBoneArrayAddresses[i])
                         continue;
-                    MinimalPlayerData mpd;
-                    mpd.hObject = p.hObject;
-                    mpd.Team = p.Team;
-                    mpd.Health = p.Health;
-                    memcpy(mpd.Name, p.Name, sizeof(mpd.Name));
-                    mpd.HeadPos = m_headPositions[i];
-                    mpd.FootPos = m_footPositions[i];
-                    mpd.AbsPos = m_absolutePositions[i];
-                    mpd.IsDead = (m_isDeadFlags[i] != 0);
-                    
-                    m_minimalPlayers.push_back(mpd);
+
+                   
+                    std::array<D3DXMATRIX, NUM_BONES> localMats;
+                   
+                    for (size_t j = 0; j < NUM_BONES; j++) {
+                        int bone = boneGroups[j];
+                        uintptr_t matrixAddr = tempBoneArrayAddresses[i] + (bone * sizeof(D3DXMATRIX));
+                        mem.AddScatterReadRequest(m_scatterHandle, matrixAddr, &localMats[j], sizeof(D3DXMATRIX));
+                    }
+                    mem.ExecuteReadScatter(m_scatterHandle);
+
+                   
+                    std::array<D3DXVECTOR3, NUM_BONES> bonePositions;
+                    for (size_t j = 0; j < NUM_BONES; j++) {
+                        bonePositions[j].x = localMats[j]._14;
+                        bonePositions[j].y = localMats[j]._24;
+                        bonePositions[j].z = localMats[j]._34;
+                    }
+                    tempExtraBones[i] = bonePositions;
                 }
                  
-
-                return true;
+                for (int i = 0; i < MAX_PLAYERS; ++i) {
+                    if (!tempBoneArrayAddresses[i])
+                        continue;
+                    tempHeadPositions[i] = tempExtraBones[i][0];  // bone 6 should be at index 0.
+                }
             }
+            else {
+               
+                for (int i = 0; i < MAX_PLAYERS; ++i) {
+                    if (!tempBoneArrayAddresses[i])
+                        continue;
+                    uintptr_t headBoneAddr = tempBoneArrayAddresses[i] + (6 * sizeof(D3DXMATRIX));
+                    mem.AddScatterReadRequest(m_scatterHandle, headBoneAddr, &tempHeadBoneMatrices[i], sizeof(D3DXMATRIX));
+                    mem.ExecuteReadScatter(m_scatterHandle);
+                }
+                for (int j = 0; j < MAX_PLAYERS; ++j) {
+                    tempHeadPositions[j] = D3DXVECTOR3(
+                        tempHeadBoneMatrices[j]._14,
+                        tempHeadBoneMatrices[j]._24,
+                        tempHeadBoneMatrices[j]._34
+                    );
+                }
+            }
+
+            
+            m_headPositions = tempHeadPositions;
+            m_footPositions = tempFootPositions;
+            m_absolutePositions = tempAbsolutePositions;
+            m_isDeadFlags = tempIsDeadFlags;
+
+             
+            m_minimalPlayers.clear();
+            m_minimalPlayers.reserve(MAX_PLAYERS);
+            for (int i = 0; i < MAX_PLAYERS; ++i) {
+                const auto& p = currentPlayers[i];
+                if (!p.hObject || p.ClientID == m_localPlayer.ClientID)
+                    continue;
+                MinimalPlayerData mpd;
+                mpd.hObject = p.hObject;
+                mpd.Team = p.Team;
+                mpd.Health = p.Health;
+                memcpy(mpd.Name, p.Name, sizeof(mpd.Name));
+                mpd.HeadPos = m_headPositions[i];
+                mpd.FootPos = m_footPositions[i];
+                mpd.AbsPos = m_absolutePositions[i];
+                mpd.IsDead = (m_isDeadFlags[i] != 0);
+                if (Bonecheckbox) {
+                    
+                    mpd.bones = tempExtraBones[i];
+                }
+                m_minimalPlayers.push_back(mpd);
+            }
+
+            return true;
+        }
         };
     }

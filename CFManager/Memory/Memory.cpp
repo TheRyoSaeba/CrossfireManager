@@ -6,6 +6,8 @@
 #include <windows.h>
 #include <tlhelp32.h>
 #include <unordered_set>
+ 
+
 std::unordered_set<uintptr_t> blacklist;
 Memory::Memory()
 {
@@ -735,7 +737,7 @@ bool Memory::Read(uintptr_t address, void* buffer, size_t size, int pid) const
 
  
 
-
+ 
 
  
 uintptr_t Memory::FindWritableFunctionPointer(const std::string& moduleName)
@@ -761,39 +763,11 @@ uintptr_t Memory::FindWritableFunctionPointer(const std::string& moduleName)
 	return 0;
 }
 
-uintptr_t Memory::FindExecutableCodeCave(size_t minSize, const std::string& moduleName)
-{
-	uintptr_t base = this->GetBaseDaddy(moduleName);
-	uintptr_t size = this->GetBaseSize(moduleName);
 
-	for (uintptr_t addr = base; addr < base + size; addr += 0x1000) {  
-		MEMORY_BASIC_INFORMATION mbi;
-		VirtualQuery((void*)addr, &mbi, sizeof(mbi));
-
-		 
-		if (blacklist.find(addr) != blacklist.end())
-			continue;
-
-		 
-		if (mbi.Protect == PAGE_EXECUTE_READWRITE && mbi.RegionSize >= minSize) {
-			
-			return addr;
-		}
-	}
-
-	return 0; // No suitable cave found
-}
 
  
 
-size_t Memory::GetExecutableMemorySize(uintptr_t address)
-{
-	MEMORY_BASIC_INFORMATION mbi;
-	if (VirtualQuery((LPCVOID)address, &mbi, sizeof(mbi))) {
-		return mbi.RegionSize;
-	}
-	return 0;
-}
+
 
 VMMDLL_SCATTER_HANDLE Memory::CreateScatterHandle() const
 {

@@ -1,6 +1,7 @@
 ﻿#define IMGUI_DEFINE_MATH_OPERATORS
  
 #define NOMINMAX  
+#include "Overlay.h"
 #include <Windows.h>
 #include "imgui.h"
 #include "imgui_impl_win32.h"
@@ -9,11 +10,10 @@
 #include "imgui_freetype.h"
 #include <d3d11.h>
 #include <tchar.h>
- 
 #include <algorithm>
 #include <atomic>
 #include <algorithm>
-#include "Overlay.h"
+ 
 #include <imgui.h>
 #include <vector>
 #include <array>
@@ -96,7 +96,7 @@ inline float AimSpeed = 0.5f;
 inline float MaxAimDistance = 100;
 static int firstHotkey = 0;
 static int selectedSmoothType = 0;
-static int esp_timer = 0;
+static bool crosshair_notify = false;
 static bool Headcheckbox = false;
 static bool Healthcheckbox = false;
 static bool showInfoText = true;
@@ -121,11 +121,11 @@ inline bool allow_clicks = false;
  
 
 inline int fov = 300; 
-inline RGBA g_EnemyColor{ 255, 0, 0, 255 };   
-inline RGBA g_AllyColor{ 0, 255, 0, 255 };  
-inline RGBA g_ESPLineColor{ 255, 255, 255, 255 };   
-inline RGBA g_NameColor{ 255, 255, 0, 255 };  
-inline RGBA g_HeadColor{ 255, 255, 255, 255 };  
+ RGBA g_EnemyColor{ 255, 0, 0, 255 };   
+ RGBA g_AllyColor{ 0, 255, 0, 255 };  
+RGBA g_ESPLineColor{ 255, 255, 255, 255 };
+RGBA g_NameColor{ 255, 255, 0, 255 };
+ RGBA g_HeadColor{ 255, 255, 255, 255 };
 void RGBAtoFloat4(const RGBA& c, float out[4])
 {
     out[0] = c.R / 255.0f;
@@ -147,7 +147,10 @@ RGBA Float4toRGBA(const float in[4])
 
 
 
-
+static std::string kmbox_status = "Initializing...";
+static bool kmbox_connected = false;
+static DWORD connectedBaudRate = 0;
+static bool attempted_connection = false;
 static bool autoReconnect = false;
 static bool showMenu = true;
 static bool overlayVisible = true;
@@ -158,7 +161,7 @@ static std::mutex status_mutex;
 static std::future<void> update_task;
 static std::atomic<bool> update_in_progress{ false };
 static std::string dma_status = "Not Initialized";
-inline std::string update_status = "Idle";
+ 
 static std::atomic<bool> dma_success(false);
 static int initialization_attempts = 0;
 static bool initializing_dma = false;
@@ -227,23 +230,29 @@ void InitializeDMA(Memory& mem) {
             }
 
             dma_success.store(true);
+
             update_status = "Updating Offsets...";
 
-            LOG("[X]Cheats still not working? Try Forcing Update! \n");
-            LOG("[!]If that fails, then sigs/structs are out of Date! \n");
-            std::jthread updateThread([&](std::stop_token stoken) {
-                update_status = UpdateOffsets(mem) ? "Offsets Updated" : "Update Failed";
-                if (update_status == "Offsets Updated") {
-                    RUNCACHE = true;
-                  
-                }
-                });
+            bool success = UpdateOffsets(mem); 
+
+           
+            if (success) {
+                update_status = "Offsets Updated";
+                RUNCACHE = true;
+                g_cacheManager.StartUpdateThread(mem);
+            }
+            else {
+                update_status = "Update Failed";
+            }
+
+            LOG("[X] Cheats not working? Try Forcing Update!\n");
+            LOG("[X] Cheats still not working? Restart your PC, sometimes DMA Device just stops reading!\n");
+            LOG("[!] If that fails, then sigs/structs are out of Date!\n");
+
+            
             VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_REFRESH_ALL, 1);
             VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_CONFIG_PROCCACHE_TICKS_PARTIAL, 600);
             VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_CONFIG_PROCCACHE_TICKS_TOTAL, 600);
-
-            
-            
         }
         else {
             if (mem.vHandle) {
@@ -252,13 +261,75 @@ void InitializeDMA(Memory& mem) {
             }
             Memory::DMA_INITIALIZED = FALSE;
             Memory::PROCESS_INITIALIZED = FALSE;
-            dma_status = "Not Initialized";
             dma_status = "Connection Failed";
             dma_success.store(false);
         }
+
         initializing_dma = false;
         }).detach();
 }
+
+ 
+void attempt_kmbox_connection() {
+    int kmResult = kmBoxBMgr.init();
+
+    switch (kmResult) {
+    case -1:
+        kmbox_status = "KMBOX/MAKCU Failed!";
+        return;
+    case -2:
+        kmbox_status = "KMBOX/MAKCU Port Not Open!";
+        return;
+    case 0:
+        break; 
+    default:
+        kmbox_status = "Initializing...";
+        return;
+    }
+
+    HANDLE hSerial = kmBoxBMgr.getSerialHandle();
+    if (hSerial == INVALID_HANDLE_VALUE) {
+        kmbox_status = "KMBOX/MAKCU Failed!";
+        return;
+    }
+
+    std::string MAKCUCHECK = "km.version()\r";
+    send_command(hSerial, MAKCUCHECK);
+
+    char buffer[256];
+    DWORD bytesRead;
+    std::string response;
+
+    while (true) {
+        if (ReadFile(hSerial, buffer, sizeof(buffer) - 1, &bytesRead, nullptr) && bytesRead > 0) {
+            buffer[bytesRead] = '\0';
+            response += buffer;
+
+            if (response.find(">>>") != std::string::npos) {
+                break;
+            }
+        }
+        else {
+            break;
+        }
+    }
+
+    
+    if (response.empty()) {
+        kmbox_status = "KMBOX/MAKCU Failed!";
+        kmbox_connected = false;
+    }
+    else if (response.find("km.MAKCU") != std::string::npos) {
+        kmbox_status = "MAKCU Connected";
+        kmbox_connected = true;
+    }
+    else {
+        kmbox_status = "KMBOX Connected";
+        kmbox_connected = true;
+    }
+}
+
+
 
   
 
@@ -593,7 +664,7 @@ int main(int, char**)
 
             //ImGuiWindowFlags_NoDecoration
 
-            ImGui::SetNextWindowSize(ImVec2(1920, 1080), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(1280, 720), ImGuiCond_Always);
 
             if (showMenu) {
                 ImGui::Begin("IMGUI MENU", &showMenu, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoBackground);
@@ -878,7 +949,7 @@ int main(int, char**)
 
                                 ImGui::Separator();
 
-                                ImGui::SliderInt("ESP Delay", &esp_timer, 0, 10);
+                                ImGui::Checkbox("Crosshair Notification", &crosshair_notify);
 
 
                                 ImGui::Separator();
@@ -900,7 +971,7 @@ int main(int, char**)
                                 static int currentColorSelection = 0;
 
 
-                                const char* colorChoices[] = { "Enemy","Traceline","Name","Head", "Ally" };
+                                const char* colorChoices[] = { "Enemy","Traceline","Name","Bones", "Ally" };
                                 ImGui::Combo("Color Editor", &currentColorSelection, colorChoices, IM_ARRAYSIZE(colorChoices));
 
 
@@ -1070,7 +1141,7 @@ int main(int, char**)
                             ImGui::BeginChild("C", "Others", ImVec2((c::bg::size.x - 60 - s->ItemSpacing.x * 4) / 2, 80));
                             {
                                 ImGui::SliderFloat("2D box thick", &boxtk, 1.f, 5.f, "%.1f");
-                                ImGui::SliderFloat("Head Size", &hdtk, 1.f, 20.f, "%.1f");
+                                ImGui::SliderFloat("Head Size", &hdtk, 1.f, 10.f, "%.1f");
                                 ImGui::SliderFloat("Health Size", &hptk, 1.f, 5.f, "%.1f");
                                 ImGui::SliderFloat("Bone thick", &bonetk, 1.f, 5.f, "%.1f");
                             }
@@ -1215,13 +1286,19 @@ int main(int, char**)
                                     ImGui::EndDisabled();
                                 }
                                 else {
-
-
-                                    if (ImGui::Button("Initialize DMA", ImVec2(ImGui::GetContentRegionAvail().x - s->WindowPadding.x, 25))) {
-
-                                        InitializeDMA(mem);
+                                    if (initializing_dma) {
+                                        ImGui::BeginDisabled();
+                                        ImGui::Button("Initialize DMA", ImVec2(ImGui::GetContentRegionAvail().x - s->WindowPadding.x, 25));
+                                        ImGui::EndDisabled();
                                     }
-                                
+                                    else {
+                                        if (ImGui::Button("Initialize DMA", ImVec2(ImGui::GetContentRegionAvail().x - s->WindowPadding.x, 25))) {
+                                            InitializeDMA(mem);
+                                            
+
+
+                                        }
+                                    }
                                 }
 
 
@@ -1246,23 +1323,21 @@ int main(int, char**)
                                     ImVec4(0.0f, 1.0f, 1.0f, 1.0f) : ImVec4(1.0f, 0.5f, 0.0f, 1.0f),
                                     "%s", update_status.c_str()
                                 );
-                                std::future<bool> updateFuture;
                                 if (ImGui::Button("Force Update Config", ImVec2(ImGui::GetContentRegionAvail().x - s->WindowPadding.x, 25))) {
-                                   
-                                    
                                     ClearConfig();
-                                    LOG("[!]Cleared the Config... \n");
-                                     
-                                    updateFuture = std::async(std::launch::async, [] {
-                                        return UpdateOffsets(mem);
-                                        });
+                                    LOG("[!] Cleared the Config...\n");
                                     update_status = "Updating Offsets...";
-                                    if (updateFuture.valid() && updateFuture.wait_for(std::chrono::seconds(5)) == std::future_status::ready) {
-                                        bool success = updateFuture.get();
-                                        update_status = success ? "Offsets Updated" : "Update Failed";
-                                        if (success) RUNCACHE = true; 
+
+                                    bool success = UpdateOffsets(mem);
+
+
+                                    if (success) {
+                                        update_status = "Offsets Updated";
+                                        RUNCACHE = true;
                                         g_cacheManager.StartUpdateThread(mem);
-                                         
+                                    }
+                                    else {
+                                        update_status = "Update Failed";
                                     }
                                 }
                             }
@@ -1278,8 +1353,7 @@ int main(int, char**)
 
                                 }
 
-                                // ImGui::Spacing();
-                                // ImGui::Separator();
+                                 
 
 
                                 int monitorCount = GetSystemMetrics(SM_CMONITORS);
@@ -1298,7 +1372,7 @@ int main(int, char**)
                                     }
                                 }
                             }
-                            ImGui::EndChild(); // <- Ensure this matches BeginChild
+                            ImGui::EndChild();  
 
 
                         }
@@ -1323,23 +1397,8 @@ int main(int, char**)
                                 ImGui::PopFont();
                                 ImGui::Separator();
 
-                                static std::string kmbox_status = "Initializing...";
-                                static bool kmbox_connected = false;
-
-
-                                static bool attempted_connection = false;
                                 if (!attempted_connection) {
-                                    int kmResult = kmBoxBMgr.init();
-                                    if (kmResult == -1) {
-                                        kmbox_status = "KMBOX Failed!";
-                                    }
-                                    else if (kmResult == -2) {
-                                        kmbox_status = "KMBOX Port Not Open!";
-                                    }
-                                    else {
-                                        kmbox_status = "KMBOX Connected";
-                                        kmbox_connected = true;
-                                    }
+                                    attempt_kmbox_connection();
                                     attempted_connection = true;
                                 }
                                 static std::string mouse_move_status = "Idle";
@@ -1347,10 +1406,8 @@ int main(int, char**)
                                 ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Status:");
                                 ImGui::SameLine();
                                 ImGui::TextColored(
-                                    kmbox_status == "KMBOX Connected" ?
-                                    ImVec4(0.0f, 1.0f, 0.0f, 1.0f) :
-                                    (kmbox_status.find("Failed") != std::string::npos || kmbox_status.find("Port Not Open") != std::string::npos) ?
-                                    ImVec4(1.0f, 0.0f, 0.0f, 1.0f) :
+                                    (kmbox_status == "KMBOX Connected" || kmbox_status == "MAKCU Connected") ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) :
+                                    (kmbox_status.find("Failed") != std::string::npos || kmbox_status.find("Port Not Open") != std::string::npos) ? ImVec4(1.0f, 0.0f, 0.0f, 1.0f) :
                                     ImVec4(1.0f, 1.0f, 0.0f, 1.0f),
                                     "%s", kmbox_status.c_str()
                                 );
@@ -1358,25 +1415,18 @@ int main(int, char**)
 
                                 if (!kmbox_connected) {
                                     if (ImGui::Button("KMBOX Connect", ImVec2(ImGui::GetContentRegionAvail().x - s->WindowPadding.x, 25))) {
-                                        int kmResult = kmBoxBMgr.init();
-                                        if (kmResult == -1) {
-                                            kmbox_status = "KMBOX Failed!";
-                                        }
-                                        else if (kmResult == -2) {
-                                            kmbox_status = "KMBOX Port Not Open!";
-                                        }
-                                        else {
-                                            kmbox_status = "KMBOX Connected";
-                                            kmbox_connected = true;
-                                        }
+                                        attempt_kmbox_connection();  
                                     }
                                 }
+
+                              
                                 else {
 
                                     ImGui::BeginDisabled();
                                     ImGui::Button("KMBOX Connected", ImVec2(ImGui::GetContentRegionAvail().x - s->WindowPadding.x, 25));
                                     ImGui::EndDisabled();
                                 }
+                                
 
                                 ImGui::Spacing();
                                 ImGui::Separator();
@@ -1527,6 +1577,93 @@ int main(int, char**)
                 ImGui::PopFont();
             }
 
+
+            if (draw_radar && RUNCACHE)
+            {
+                try
+                {
+                    g_cacheManager.StartUpdateThread(mem);
+                    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+                    auto snapshot = g_cacheManager.GetSnapshot();
+                    float radarSizeFactor = viewport->Size.y * 0.2f;
+                    ImVec2 radarPos = viewport->Pos + ImVec2(20, 20);
+                    ImVec2 radarSize = ImVec2(radarSizeFactor, radarSizeFactor);
+                    float radarRadius = 150.0f;
+                    float radarMaxDistance = 7000.0f;
+                    if (!snapshot)
+                    {
+                        LOG("Radar Crash: snapshot is nullptr!");
+                        draw_radar = FALSE;
+                    }
+                    ImGui::SetNextWindowPos(radarPos, ImGuiCond_FirstUseEver);
+                    ImGui::SetNextWindowSize(radarSize, ImGuiCond_FirstUseEver);
+                    ImGui::SetNextWindowBgAlpha(0.0f);
+                    if (ImGui::Begin("Radar", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground))
+                    {
+                        radarSize = ImGui::GetWindowSize();
+                        radarPos = ImGui::GetWindowPos();
+
+                        ImVec2 radarCenter = radarSize * 0.5f;
+                        ImDrawList* drawList = ImGui::GetWindowDrawList();
+                        ImVec2 radarScreenPos = ImGui::GetWindowPos();
+
+
+                        drawList->AddCircle(radarScreenPos + radarCenter, radarRadius, IM_COL32(255, 255, 255, 100), 64, 1.5f);
+
+                        ImVec2 resizeHandleStart = radarScreenPos + ImVec2(radarSize.x - 12, radarSize.y - 12);
+                        ImVec2 resizeHandleEnd = radarScreenPos + ImVec2(radarSize.x - 4, radarSize.y - 4);
+                        drawList->AddLine(resizeHandleStart, resizeHandleEnd, IM_COL32(200, 200, 200, 180), 2.0f);
+
+
+                        drawList->AddCircleFilled(radarScreenPos + radarCenter, 5.0f, IM_COL32(255, 255, 255, 255));
+                        for (const auto& enemy : snapshot->enemies)
+                        {
+                            if (enemy.IsDead || enemy.Team == snapshot->localTeam)
+                                continue;
+
+
+                            float playerYaw = fmodf(snapshot->localYaw * (180.0f / M_PI), 360.0f); // Convert to degrees if necessary
+                            if (playerYaw < 0) playerYaw += 360.0f;
+
+                            D3DXVECTOR3 offset = enemy.AbsPos - snapshot->localAbsPos;
+
+                            float cosYaw = cosf(-playerYaw * (M_PI / 180.0f));
+                            float sinYaw = sinf(-playerYaw * (M_PI / 180.0f));
+                            float rotatedX = (offset.x * cosYaw + offset.z * sinYaw);
+                            float rotatedZ = (offset.z * cosYaw - offset.x * sinYaw);
+
+
+                            float scaleFactor = radarRadius / radarMaxDistance;
+                            ImVec2 enemyPos = radarCenter + ImVec2(rotatedX * scaleFactor, -rotatedZ * scaleFactor);
+                            ImVec2 direction = enemyPos - radarCenter;
+                            float distance = sqrtf(enemyPos.x * enemyPos.x + enemyPos.y * enemyPos.y);
+                            if (distance > radarRadius - 10)
+                            {
+                                enemyPos = radarCenter + (enemyPos - radarCenter) * ((radarRadius - 10) / distance);
+                            }
+
+
+                            float enemyAngle = atan2f(rotatedX, rotatedZ);
+
+
+                            drawList->AddCircleFilled(radarScreenPos + enemyPos, 5.0f, IM_COL32(255, 0, 0, 255));
+                        }
+
+                        ImGui::End();
+                    }
+                }
+                catch (const std::exception& e)
+                {
+                    LOG("Radar Exception: %s", e.what());
+                }
+                catch (...)
+                {
+                    LOG("Radar Exception: Unknown error!");
+                }
+
+            }
+
             static auto lastUpdate = std::chrono::high_resolution_clock::now();
             auto now = std::chrono::high_resolution_clock::now();
             bool shouldDraw = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastUpdate).count() >=2;
@@ -1536,7 +1673,7 @@ int main(int, char**)
             ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
             ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize, ImGuiCond_Always);
              
-            if (Dcheckbox) {
+            if (Dcheckbox || Bonecheckbox) {
 
 
                 ImGui::Begin("Overlay", nullptr,
@@ -1561,10 +1698,6 @@ int main(int, char**)
 
 
                     
-
-
-
-
                     if (snapshot) {
                         for (const auto& enemy : snapshot->enemies) {
 
@@ -1572,6 +1705,7 @@ int main(int, char**)
                             {
                                 snapshot->enemies.clear();
                             }
+
 
                             bool isAlly = (enemy.Team == snapshot->localTeam);
 
@@ -1628,18 +1762,42 @@ int main(int, char**)
 
 
                             if (Flogs[0]) {
+                                ImVec2 crosshairCenter(
+                                    snapshot->drawPrim.viewport.X + snapshot->drawPrim.viewport.Width * 0.5f,
+                                    snapshot->drawPrim.viewport.Y + snapshot->drawPrim.viewport.Height * 0.5f
+                                );
 
-                                float headRadius = hdtk * 0.6f;
-                                ImVec2 headCenter = ImVec2(headPos.x, headPos.y - headRadius * 0.4f);
+                                
+                                float dx = rect.headPos.x - crosshairCenter.x;
+                                float dy = rect.headPos.y - crosshairCenter.y;
+                                float distance = sqrtf(dx * dx + dy * dy);
+                                
+                                float headRadius = 0.4f + hdtk;
+                                float threshold = 40.0f;
+                                ImVec2 headCenter(headPos.x - 3.0f, headPos.y - 8.0f);
 
-                                draw->AddCircle(
+                                draw->AddCircleFilled(
                                     headCenter,
                                     headRadius,
-                                    IM_COL32(g_HeadColor.R, g_HeadColor.G, g_HeadColor.B, g_HeadColor.A),
-                                    20,
-                                    0.5f + hdtk
+                                    IM_COL32(g_HeadColor.R, g_HeadColor.G, g_HeadColor.B, g_HeadColor.A)
+    
                                 );
+                                if (distance < threshold && crosshair_notify) {
+
+                                    if (!rect.isAlly)
+                                    {
+                                        ImVec2 shootPos(rect.headPos.x + 20.0f, rect.headPos.y - 25.0f);
+
+                                        ImGui::PushFont(font::tahoma_bold2);
+
+                                        draw->AddText(shootPos, IM_COL32(255, 0, 0, 255), "Shoot!");
+                                        ImGui::PopFont();
+                                     }
+                                     
+                                    
+                                }
                             }
+
                             
                             if (Dcheckbox) {
 
@@ -1738,8 +1896,6 @@ int main(int, char**)
 
                             }
 
-
-
                             if (Flogs[2]) {
                                 ImVec2 textSize = ImGui::CalcTextSize(rect.playerName.c_str());
                                 draw->AddText(ImVec2(rect.x + (rect.w - textSize.x) * 0.5f, rect.y - textSize.y - 2.0f),
@@ -1766,101 +1922,14 @@ int main(int, char**)
                                 ImGui::SetCursorPos(ImVec2(254, 23));
                                 ImVec2 pos1 = ImGui::GetCursorScreenPos();
                                 draw->AddText(ImVec2(pos1.x, pos1.y), ImColor(255, 255, 255, 255), "M416");
-                            }
-
-
-                            if (draw_radar)
-                            {
-
-                                try
-                                {
-
-                                    const ImGuiViewport* viewport = ImGui::GetMainViewport();
-                                     
-
-                                        float radarSizeFactor = viewport->Size.y * 0.2f;
-                                        ImVec2 radarPos = viewport->Pos + ImVec2(20, 20);
-                                        ImVec2 radarSize = ImVec2(radarSizeFactor, radarSizeFactor);
-                                        float radarRadius = 150.0f;
-                                        float radarMaxDistance = 7000.0f;
-                                        if (!snapshot)
-                                        {
-                                            LOG("Radar Crash: snapshot is nullptr!");
-                                            draw_radar = FALSE;
-                                        }
-                                        ImGui::SetNextWindowPos(radarPos, ImGuiCond_Always);
-                                        ImGui::SetNextWindowSize(radarSize);
-                                        ImGui::SetNextWindowBgAlpha(0.0f);
-                                        if (ImGui::Begin("Radar", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground))
-                                        {
-                                            ImVec2 radarCenter = ImGui::GetWindowSize() * 0.5f;
-                                            ImDrawList* drawList = ImGui::GetWindowDrawList();
-                                            ImVec2 radarScreenPos = ImGui::GetWindowPos();
-
-
-                                            drawList->AddCircle(radarScreenPos + radarCenter, radarRadius, IM_COL32(255, 255, 255, 100), 64, 1.5f);
-                                            
-
-
-
-                                            drawList->AddCircleFilled(radarScreenPos + radarCenter, 5.0f, IM_COL32(255, 255, 255, 255));
-                                            for (const auto& enemy : snapshot->enemies)
-                                            {
-                                                if (enemy.IsDead || enemy.Team == snapshot->localTeam)
-                                                    continue;
-
-
-                                                float playerYaw = fmodf(snapshot->localYaw * (180.0f / M_PI), 360.0f); // Convert to degrees if necessary
-                                                if (playerYaw < 0) playerYaw += 360.0f;
-
-                                                D3DXVECTOR3 offset = enemy.AbsPos - snapshot->localAbsPos;
-
-                                                float cosYaw = cosf(-playerYaw * (M_PI / 180.0f));
-                                                float sinYaw = sinf(-playerYaw * (M_PI / 180.0f));
-                                                float rotatedX = (offset.x * cosYaw + offset.z * sinYaw);
-                                                float rotatedZ = (offset.z * cosYaw - offset.x * sinYaw);
-
-
-                                                float scaleFactor = radarRadius / radarMaxDistance;
-                                                ImVec2 enemyPos = radarCenter + ImVec2(rotatedX * scaleFactor, -rotatedZ * scaleFactor);
-                                                ImVec2 direction = enemyPos - radarCenter;
-                                                float distance = sqrtf(enemyPos.x * enemyPos.x + enemyPos.y * enemyPos.y);
-                                                if (distance > radarRadius - 10)
-                                                {
-                                                    enemyPos = radarCenter + (enemyPos - radarCenter) * ((radarRadius - 10) / distance);
-                                                }
-
-
-                                                float enemyAngle = atan2f(rotatedX, rotatedZ);
-
-
-                                                float arrowSize = radarRadius * 0.09f;
-                                                ImVec2 base = radarScreenPos + enemyPos;
-                                                ImVec2 left = base + ImVec2(cos(enemyAngle + 2.6f) * arrowSize, sin(enemyAngle + 2.6f) * arrowSize);
-                                                ImVec2 right = base + ImVec2(cos(enemyAngle - 2.6f) * arrowSize, sin(enemyAngle - 2.6f) * arrowSize);
-
-                                                drawList->AddTriangleFilled(base, left, right, IM_COL32(255, 0, 0, 255));
-                                            }
-
-                                            ImGui::End();
-                                        }
-                                    }
-                                    catch (const std::exception& e)
-                                    {
-                                        LOG("Radar Exception: %s", e.what());
-                                    }
-                                    catch (...)
-                                    {
-                                        LOG("Radar Exception: Unknown error!");
-                                    }
-                                }
+                            } 
+                             
                           
 
-                            if (Bonecheckbox && !rect.isAlly)
+                            if (Bonecheckbox)
                             {
 
-
-
+                                 
                                 std::vector<int>  boneGroups = {
 
                                      6,  5,  4,  3,   1 ,
@@ -1869,32 +1938,36 @@ int main(int, char**)
                                      7, 8, 9 ,
                                     10,
                                 };
-
-
                                 for (auto& enemy : snapshot->enemies)
                                 {
+                                    bool isAlly = (enemy.Team == snapshot->localTeam);
 
-                                    if (enemy.IsDead || enemy.Team == snapshot->localTeam)
+                                    if (Filterteams && isAlly)
                                         continue;
 
-                                    auto positions = GetAllBones(mem, (uintptr_t)enemy.hObject, boneGroups);
+                                    if (enemy.IsDead)
+                                        continue;
+
+                                    RGBA boneColor = (enemy.Team == snapshot->localTeam) ? g_AllyColor : g_HeadColor;
 
                                     DrawAllBones(
                                         draw,
                                         mem,
-                                        (uintptr_t)enemy.hObject,
+                                        reinterpret_cast<uintptr_t>(enemy.hObject),
                                         boneGroups,
-                                        positions,
+                                        enemy.bones,  
                                         snapshot->drawPrim,
-                                        IM_COL32(g_ESPLineColor.R, g_ESPLineColor.G, g_ESPLineColor.B, g_ESPLineColor.A)
+                                        IM_COL32(boneColor.R, boneColor.G, boneColor.B, boneColor.A)
                                     );
+                           }
+
                                 }
                             }
 
                         }
 
 
-                    }
+                    
 
                 }
             }

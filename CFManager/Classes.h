@@ -470,15 +470,15 @@ namespace KLASSES {
         D3DXVECTOR3 vScreen;
         D3DXVECTOR3 worldPos = *InOut;
 
-        // ✅ Convert D3DXVECTOR3 to DirectXMath XMVECTOR
+        
         XMVECTOR worldPosVec = XMVectorSet(worldPos.x, worldPos.y, worldPos.z, 1.0f);
 
-        // ✅ Convert D3DXMATRIX to DirectXMath XMMATRIX
+       
         XMMATRIX projMatrix = XMLoadFloat4x4(reinterpret_cast<const XMFLOAT4X4*>(&drawPrim.projection));
         XMMATRIX viewMatrix = XMLoadFloat4x4(reinterpret_cast<const XMFLOAT4X4*>(&drawPrim.view));
         XMMATRIX worldMatrix = XMMatrixIdentity();  // D3DXMATRIX(1.0f, 0.0f, 0.0f, ...)
 
-        // ✅ Replace D3DXVec3Project with XMVector3Project
+        
         XMVECTOR screenVec = XMVector3Project(
             worldPosVec,
             0.0f, 0.0f,  // Viewport X, Y
@@ -489,7 +489,7 @@ namespace KLASSES {
             worldMatrix
         );
 
-        // ✅ Convert XMVECTOR back to D3DXVECTOR3
+        
         InOut->x = XMVectorGetX(screenVec);
         InOut->y = XMVectorGetY(screenVec);
         InOut->z = XMVectorGetZ(screenVec);

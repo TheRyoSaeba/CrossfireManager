@@ -201,9 +201,9 @@ public:
 	bool Write(uintptr_t address, void* buffer, size_t size, int pid) const;
 	 
 	uintptr_t  FindWritableFunctionPointer(const std::string& moduleName);
+	void DebuggerCheck(uintptr_t address, const std::string& process_name, const std::string& module_name, int duration);
+
 	
-	uintptr_t  FindExecutableCodeCave(size_t minSize, const std::string& moduleName);
-	size_t  GetExecutableMemorySize(uintptr_t address);
 	/**
 	 * \brief Writes memory to the process using a template
 	 * \param address to write to

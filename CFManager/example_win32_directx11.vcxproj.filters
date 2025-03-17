@@ -78,7 +78,6 @@
     <ClCompile Include="Memory\pch.cpp" />
     <ClCompile Include="Memory\Registry.cpp" />
     <ClCompile Include="Memory\Shellcode.cpp" />
-    <ClCompile Include="Memory\window.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\misc\debuggers\imgui.natvis">

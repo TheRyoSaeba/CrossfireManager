@@ -36,8 +36,4 @@
 
 ![working](https://github.com/user-attachments/assets/a16b3df8-d926-42c3-9bf3-d213824cf151)
 
-## Setup
-Clone this repo to your desktop and run `npm install` to install all the dependencies.
-
-You might want to look into `config.json` to make change the port you want to use and set up a SSL certificate.
  

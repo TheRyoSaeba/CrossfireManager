@@ -9,21 +9,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\imconfig.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\imgui.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\imgui_internal.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\imgui_settings.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\imgui_freetype.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
     <ClInclude Include="font.h">
       <Filter>sources</Filter>
     </ClInclude>
@@ -57,8 +42,11 @@
     <ClInclude Include="Classes.h" />
     <ClInclude Include="Cache\Cache.h" />
     <ClInclude Include="Cache\CacheManager.h" />
-    <ClInclude Include="Overlay.h" />
     <ClInclude Include="Memory\window.h" />
+    <ClInclude Include="auth.hpp" />
+    <ClInclude Include="Config\globals.h" />
+    <ClInclude Include="Config\config.h" />
+    <ClInclude Include="ESP\ESP.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -78,18 +66,11 @@
     <ClCompile Include="Memory\pch.cpp" />
     <ClCompile Include="Memory\Registry.cpp" />
     <ClCompile Include="Memory\Shellcode.cpp" />
+    <ClCompile Include="Config\config.cpp" />
+    <ClCompile Include="Config\globals.cpp" />
+    <ClCompile Include="ESP\ESP.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\misc\debuggers\imgui.natvis">
-      <Filter>imgui</Filter>
-    </None>
-    <None Include="..\..\misc\debuggers\imgui.natstepfilter">
-      <Filter>imgui</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Library Include="..\..\freetype\win64\freetype.lib">
-      <Filter>imgui</Filter>
-    </Library>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

@@ -1,6 +1,9 @@
 ﻿#pragma once
-#include "Overlay.h"
+#include "../ESP/ESP.h"
+#include "../Config/globals.h"
 #include <cstdint>
+#include <openssl/evp.h>
+#include <openssl/err.h>
 #include <d3d9.h>
 #include <DirectXMath.h>
 #include <fstream>
@@ -8,26 +11,36 @@
 #include <iomanip>  
 #include <cstdio>
 #include <array>
+#include <future>
 #include <unordered_map>
 #include "Classes.h"
+#include "../Config/config.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <sstream>
-#include <shlobj.h>        
- 
- 
-static bool showOffsetFinder = false;
+#include <shlobj.h>      
+
+ static bool showOffsetFinder = false;
 const std::string CONFIG_FILE = "offsets.json";
+
 using namespace DirectX;
 namespace fs = std::filesystem;
+
 inline std::string update_status = "Idle";
+const std::string encryptionKey = "0123456789abcdef0123456789abcdef";
+const std::string ivStr = "abcdef9876543210";
+
 inline uintptr_t CFBASE = 0;
 inline uintptr_t CFSHELL = 0;
 inline uintptr_t LT_SHELL = 0;
 constexpr int MAX_PLAYERS = 16;
 inline D3DVIEWPORT9 g_view_port;
-using json = nlohmann::json;
 
+using json = nlohmann::json;
+inline std::thread offsetThread;
+
+
+ 
 
  
 namespace offs {
@@ -90,223 +103,29 @@ namespace offs {
     inline uintptr_t ILTDrawPrim = 0;
 
 
-    inline bool ESPDRAWBOX = false;
-    inline bool AIMBOTBOX = false;
-}
-
- 
-extern bool Dcheckbox;
-extern bool enableAimbot;
-extern float AimFov;
-extern float AimSpeed;
-extern float MaxAimDistance;
-extern int firstHotkey;
-extern bool Headcheckbox;
-extern bool Healthcheckbox;
-extern bool showInfoText;
-extern bool Namecheckbox;
-extern bool Distancecheckbox;
-extern bool weaponcheckbox;
-extern bool Filterteams;
-extern bool showFPS;
-extern bool crosshair_notify;
-extern bool Bonecheckbox;
-extern bool showEspLines;
-extern int esptype;
-extern int fov;
-extern float boxtk;
-extern float hptk;
-extern float hdtk;
-extern float bonetk;
-extern bool draw_radar;
- 
-extern bool Flogs[6];
- 
-
-inline json SerializeCheatConfig() {
-    json j;
-    j["Dcheckbox"] = Dcheckbox;
-    j["enableAimbot"] = enableAimbot;
-    j["AimFov"] = AimFov;
-    j["AimSpeed"] = AimSpeed;
-    j["MaxAimDistance"] = MaxAimDistance;
-    j["firstHotkey"] = firstHotkey;
-    j["Headcheckbox"] = Headcheckbox;
-    j["Healthcheckbox"] = Healthcheckbox;
-    j["showInfoText"] = showInfoText;
-    j["Namecheckbox"] = Namecheckbox;
-    j["Distancecheckbox"] = Distancecheckbox;
-    j["weaponcheckbox"] = weaponcheckbox;
-    j["Filterteams"] = Filterteams;
-    j["showFPS"] = showFPS;
-    j["draw_radar"] = draw_radar;
-    j["Bonecheckbox"] = Bonecheckbox;
-    j["showEspLines"] = showEspLines;
-    j["esptype"] = esptype;
-    j["fov"] = fov;
-    j["boxtk"] = boxtk;
-    j["hptk"] = hptk;
-    j["hdtk"] = hdtk;
-    j["bonetk"] = bonetk;
-    j["crosshair_notify"] = crosshair_notify;
-     
     
-
-    {
-        std::vector<bool> flogsVec(std::begin(Flogs), std::end(Flogs));
-        j["Flogs"] = flogsVec;
-    }
-
-    return j;
-}
-
-inline void DeserializeCheatConfig(const json& j) {
-    Dcheckbox = j.value("Dcheckbox", Dcheckbox);
-    enableAimbot = j.value("enableAimbot", enableAimbot);
-    AimFov = j.value("AimFov", AimFov);
-    AimSpeed = j.value("AimSpeed", AimSpeed);
-    MaxAimDistance = j.value("MaxAimDistance", MaxAimDistance);
-    firstHotkey = j.value("firstHotkey", firstHotkey);
-    Headcheckbox = j.value("Headcheckbox", Headcheckbox);
-    Healthcheckbox = j.value("Healthcheckbox", Healthcheckbox);
-    showInfoText = j.value("showInfoText", showInfoText);
-    draw_radar = j.value("draw_radar", draw_radar);
-    Namecheckbox = j.value("Namecheckbox", Namecheckbox);
-    Distancecheckbox = j.value("Distancecheckbox", Distancecheckbox);
-    weaponcheckbox = j.value("weaponcheckbox", weaponcheckbox);
-    Filterteams = j.value("Filterteams", Filterteams);
-    showFPS = j.value("showFPS", showFPS);
-    Bonecheckbox = j.value("Bonecheckbox", Bonecheckbox);
-    showEspLines = j.value("showEspLines", showEspLines);
-    esptype = j.value("esptype", esptype);
-    fov = j.value("fov", fov);
-    boxtk = j.value("boxtk", boxtk);
-    hptk = j.value("hptk", hptk);
-    hdtk = j.value("hdtk", hdtk);
-    hdtk = std::clamp(hdtk, 0.0f, 10.0f);
-    bonetk = j.value("bonetk", bonetk);
-    crosshair_notify = j.value("crosshair_notify", crosshair_notify);
-
-    if (j.contains("Flogs") && j["Flogs"].is_array())
-    {
-        auto arr = j["Flogs"];
-        for (size_t i = 0; i < arr.size() && i < 6; i++)
-        {
-            Flogs[i] = arr[i].get<bool>();
-        }
-    }
 }
 
 
-inline std::string getCheatConfigDir() {
-    char path[MAX_PATH];
-    if (SUCCEEDED(SHGetFolderPathA(nullptr, CSIDL_PERSONAL, nullptr, 0, path))) {
-        fs::path docPath(path);
-        docPath /= "Makimura";
-        docPath /= "configs";
-        if (!fs::exists(docPath)) {
-            fs::create_directories(docPath);
-        }
-        return docPath.string();
-    }
-
-    fs::path fallback("configs");
-    if (!fs::exists(fallback))
-        fs::create_directory(fallback);
-    return fallback.string();
-}
-
-inline std::string getCheatConfigPath(const std::string& configName) {
-    fs::path p = getCheatConfigDir();
-    p /= configName + ".json";
-    return p.string();
-}
 
 
-inline void SaveCheatConfig(const std::string& configName) {
-    json j = SerializeCheatConfig();
-    std::ofstream file(getCheatConfigPath(configName));
-    if (!file.is_open())
-        return;
-    file << std::setw(4) << j;
-    file.close();
-}
 
-
-inline bool LoadCheatConfig(const std::string& configName) {
-    std::ifstream file(getCheatConfigPath(configName));
-    if (!file.is_open())
-        return false;
-    json j;
-    try {
-        file >> j;
-    }
-    catch (...) {
-        file.close();
-        return false;
-    }
-    file.close();
-    DeserializeCheatConfig(j);
-    return true;
-}
-
-
-inline std::vector<std::string> GetCheatConfigList() {
-    std::vector<std::string> configList;
-    fs::path dir(getCheatConfigDir());
-    if (fs::exists(dir) && fs::is_directory(dir)) {
-        for (const auto& entry : fs::directory_iterator(dir)) {
-            if (entry.path().extension() == ".json")
-                configList.push_back(entry.path().stem().string());
-        }
-    }
-    return configList;
-}
-inline std::string toHex(uintptr_t value) {
-    std::stringstream ss;
-    ss << "0x" << std::uppercase << std::hex << value;
-    return ss.str();
-}
-
-inline std::string getConfigPath() {
-    char path[MAX_PATH];
-    if (SUCCEEDED(SHGetFolderPathA(nullptr, CSIDL_PERSONAL, nullptr, 0, path))) {
-        fs::path docPath(path);
-        docPath /= "Makimura";
-        if (!fs::exists(docPath)) {
-            fs::create_directory(docPath);
-        }
-        docPath /= "offsets.json";
-        return docPath.string();
-    }
-
-    return "offsets.json";
-}
-
+/*
+     Config File Setup Start
+  */
+ 
 inline bool LoadOffsets() {
-    std::ifstream file(getConfigPath());
-    if (!file.is_open())
+    if (g_encryptedOffsets.empty())
         return false;
-
-    json j;
     try {
-        file >> j;
-    }
-    catch (...) {
-        file.close();
-        return false;
-    }
-    file.close();
-
-    if (!j.contains("LT_SHELL") || !j.contains("MYOFFSET") ||
-        !j.contains("dwCPlayerSize") || !j.contains("ILTDrawPrim") ||
-        !j.contains("dwCPlayerStart"))
-    {
-        return false;
-    }
-
-    try {
-
+        std::string decrypted = aesDecrypt(g_encryptedOffsets, encryptionKey, ivStr);
+        json j = json::parse(decrypted);
+        if (!j.contains("LT_SHELL") || !j.contains("MYOFFSET") ||
+            !j.contains("dwCPlayerSize") || !j.contains("ILTDrawPrim") ||
+            !j.contains("dwCPlayerStart"))
+        {
+            return false;
+        }
         LT_SHELL = std::stoull(j["LT_SHELL"].get<std::string>(), nullptr, 16);
         offs::MYOFFSET = static_cast<int32_t>(std::stoull(j["MYOFFSET"].get<std::string>(), nullptr, 16));
         offs::dwCPlayerSize = static_cast<int32_t>(std::stoull(j["dwCPlayerSize"].get<std::string>(), nullptr, 16));
@@ -328,67 +147,99 @@ inline void SaveOffsets() {
     j["dwCPlayerSize"] = toHex(static_cast<uintptr_t>(offs::dwCPlayerSize));
     j["ILTDrawPrim"] = toHex(offs::ILTDrawPrim);
     j["dwCPlayerStart"] = toHex(offs::dwCPlayerStart);
-
-    std::ofstream file(getConfigPath());
-    if (!file.is_open())
-        return;
-
-    file << std::setw(4) << j;
-    file.close();
+    std::stringstream ss;
+    ss << std::setw(4) << j;
+    std::string plainOffsets = ss.str();
+    try {
+        g_encryptedOffsets = aesEncrypt(plainOffsets, encryptionKey, ivStr);
+    }
+    catch (const std::exception& e) {
+         
+        g_encryptedOffsets.clear();
+    }
 }
 
 
 inline void ClearConfig() {
-    std::remove(getConfigPath().c_str());
+    g_encryptedOffsets.clear();
 }
 
 
 
 
-inline bool UpdateOffsets(Memory& mem) {
-    std::jthread([&mem](std::stop_token stoken) {
-        if (LoadOffsets()) {
+inline void UpdateOffsets(Memory& mem) {
+   
+    static std::atomic<bool> isUpdating = false;
 
-            return true;
-        }
-        size_t CSHELL_SIZE = mem.GetBaseSize("CShell_x64.dll");
-        if (!CFSHELL || CSHELL_SIZE == 0) return false;
-        size_t CFBASE_SIZE = mem.GetBaseSize("crossfire.exe");
-        if (!CFBASE || CFBASE_SIZE == 0) return false;
-        uintptr_t FirstsigResult =
-            mem.FindSignature(offs::LT_PATTERN, CFSHELL, CFSHELL + CSHELL_SIZE);
-        if (!FirstsigResult) return false;
+    if (isUpdating.load()) {
+        LOG("[Offsets] Already updating...");
+        return;
+    }
 
-        int32_t offset = mem.Read<int32_t>(FirstsigResult + 3);
-        LT_SHELL = FirstsigResult + 7 + offset;
+    isUpdating.store(true);
 
-        uintptr_t SecondSigResult = mem.FindSignature(offs::MY_OFFSET_PATTERN,
-            CFSHELL, CFSHELL + CSHELL_SIZE);
-        if (!SecondSigResult) return false;
-        offs::MYOFFSET = mem.Read<int32_t>(SecondSigResult + 3);
+    offsetThread = std::thread([&mem]() {
+        SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
+        update_status = "Updating Offsets...";
 
+        bool success = false;
 
+        do {
+            if (LoadOffsets()) {
+                success = true;
+                break;
+            }
 
+            size_t CSHELL_SIZE = mem.GetBaseSize("CShell_x64.dll");
+            size_t CFBASE_SIZE = mem.GetBaseSize("crossfire.exe");
 
+            if (!CFSHELL || CSHELL_SIZE == 0 || !CFBASE || CFBASE_SIZE == 0) {
+                update_status = "Update Failed";
+                success = false;
+                break;
+            }
 
-        uintptr_t ThirdSigResult = mem.FindSignature(offs::MY_PLAYERSIZE_PATTERN,
-            CFSHELL, CFSHELL + CSHELL_SIZE);
-        if (!ThirdSigResult) return false;
+            
+            uintptr_t firstSigResult = mem.FindSignature(offs::LT_PATTERN, CFSHELL, CFSHELL + CSHELL_SIZE);
+            uintptr_t secondSigResult = mem.FindSignature(offs::MY_OFFSET_PATTERN, CFSHELL, CFSHELL + CSHELL_SIZE);
+            uintptr_t thirdSigResult = mem.FindSignature(offs::MY_PLAYERSIZE_PATTERN, CFSHELL, CFSHELL + CSHELL_SIZE);
+            uintptr_t fourthSigResult = mem.FindSignature(offs::DRAWPRIM_PATTERN, CFBASE, CFBASE + CFBASE_SIZE);
 
+            if (!firstSigResult || !secondSigResult || !thirdSigResult || !fourthSigResult) {
+                update_status = "Update Failed";
+                success = false;
+                break;
+            }
 
-        offs::dwCPlayerSize = mem.Read<int32_t>(ThirdSigResult + 3);
+            
+            int32_t offsetLT = mem.Read<int32_t>(firstSigResult + 3);
+            int32_t offsetMYOFFSET = mem.Read<int32_t>(secondSigResult + 3);
+            int32_t offsetPlayerSize = mem.Read<int32_t>(thirdSigResult + 3);
+            int32_t offsetDrawPrim = mem.Read<int32_t>(fourthSigResult + 3);
 
+           
+            LT_SHELL = firstSigResult + 7 + offsetLT;
+            offs::MYOFFSET = offsetMYOFFSET;
+            offs::dwCPlayerSize = offsetPlayerSize;
+            offs::ILTDrawPrim = fourthSigResult + 7 + offsetDrawPrim;
 
-        uintptr_t FourthSigResult = mem.FindSignature(offs::DRAWPRIM_PATTERN, CFBASE, CFBASE + CFBASE_SIZE);
-        if (!FourthSigResult)
-            return false;
-        int32_t drawprimOffset = mem.Read<int32_t>(FourthSigResult + 3);
-        offs::ILTDrawPrim = FourthSigResult + 7 + drawprimOffset;
+            success = (LT_SHELL <= CFSHELL + CSHELL_SIZE);
 
-        SaveOffsets();
-        return (LT_SHELL <= CFSHELL + CSHELL_SIZE);
-        }).detach();
+            if (success)
+                SaveOffsets();
 
-    return true;
+        } while (false);
+
+        update_status = success ? "Offsets Updated" : "Update Failed";
+
+        isUpdating.store(false);
+        });
+
+    
+    offsetThread.detach();
 }
+/*
+      offsets  Setup End
+
+    */
 

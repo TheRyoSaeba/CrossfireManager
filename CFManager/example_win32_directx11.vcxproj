@@ -1,5 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\packages\Costura.Fody.6.0.0\build\Costura.Fody.props" Condition="Exists('..\packages\Costura.Fody.6.0.0\build\Costura.Fody.props')" />
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -100,7 +101,7 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;dxgi.lib;freetype.lib;leechcore.lib;vmm.lib;FTD3XX.lib;MYKMBOX.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;dxgi.lib;freetype.lib;leechcore.lib;vmm.lib;FTD3XX.lib;MYKMBOX.lib;library_x64.lib;VMProtectSDK64.lib;libcrypto.lib;libcrypto_static.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\askmo\source\repos\CrossfireManager\CFManager\Memory;C:\Users\askmo\source\repos\CrossfireManager\libs;C:\Users\askmo\source\repos\CrossfireManager\CFManager\freetype\win64;$(DXSDK_DIR)/Lib/x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <SubSystem>Console</SubSystem>
     </Link>
@@ -116,7 +117,7 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;dxgi.lib;freetype.lib;leechcore.lib;vmm.lib;FTD3XX.lib;MYKMBOX.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;dxgi.lib;freetype.lib;leechcore.lib;vmm.lib;FTD3XX.lib;MYKMBOX.lib;library_x64.lib;VMProtectSDK64.lib;libcrypto.lib;libcrypto_static.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\askmo\source\repos\CrossfireManager\CFManager\Memory;C:\Users\askmo\source\repos\CrossfireManager\libs;C:\Users\askmo\source\repos\CrossfireManager\CFManager\freetype\win64;$(DXSDK_DIR)/Lib/x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <SubSystem>Console</SubSystem>
     </Link>
@@ -137,7 +138,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;dxgi.lib;freetype.lib;leechcore.lib;vmm.lib;FTD3XX.lib;MYKMBOX.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;dxgi.lib;freetype.lib;leechcore.lib;vmm.lib;FTD3XX.lib;MYKMBOX.lib;library_x64.lib;VMProtectSDK64.lib;libcrypto.lib;libcrypto_static.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\askmo\source\repos\CrossfireManager\CFManager\Memory;C:\Users\askmo\source\repos\CrossfireManager\libs;C:\Users\askmo\source\repos\CrossfireManager\CFManager\freetype\win64;$(DXSDK_DIR)/Lib/x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <SubSystem>Console</SubSystem>
     </Link>
@@ -158,22 +159,21 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;dxgi.lib;freetype.lib;leechcore.lib;vmm.lib;FTD3XX.lib;MYKMBOX.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;dxgi.lib;freetype.lib;leechcore.lib;vmm.lib;FTD3XX.lib;MYKMBOX.lib;library_x64.lib;VMProtectSDK64.lib;libcrypto.lib;libcrypto_static.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\askmo\source\repos\CrossfireManager\CFManager\Memory;C:\Users\askmo\source\repos\CrossfireManager\libs;C:\Users\askmo\source\repos\CrossfireManager\CFManager\freetype\win64;$(DXSDK_DIR)/Lib/x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\imconfig.h" />
-    <ClInclude Include="..\..\imgui.h" />
-    <ClInclude Include="..\..\imgui_freetype.h" />
-    <ClInclude Include="..\..\imgui_internal.h" />
-    <ClInclude Include="..\..\imgui_settings.h" />
+    <ClInclude Include="auth.hpp" />
     <ClInclude Include="Cache\Cache.h" />
     <ClInclude Include="Cache\CacheManager.h" />
     <ClInclude Include="Classes.h" />
+    <ClInclude Include="Config\config.h" />
     <ClInclude Include="D3DX11tex.h" />
+    <ClInclude Include="ESP\ESP.h" />
     <ClInclude Include="font.h" />
+    <ClInclude Include="Config\globals.h" />
     <ClInclude Include="image.h" />
     <ClInclude Include="imgui\backends\imgui_impl_dx11.h" />
     <ClInclude Include="imgui\backends\imgui_impl_win32.h" />
@@ -199,9 +199,11 @@
     <ClInclude Include="Memory\window.h" />
     <ClInclude Include="Memory\xorstr.hpp" />
     <ClInclude Include="offsets.h" />
-    <ClInclude Include="Overlay.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Config\config.cpp" />
+    <ClCompile Include="Config\globals.cpp" />
+    <ClCompile Include="ESP\ESP.cpp" />
     <ClCompile Include="imgui\backends\imgui_impl_dx11.cpp" />
     <ClCompile Include="imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
@@ -219,13 +221,17 @@
     <ClCompile Include="Memory\Shellcode.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\misc\debuggers\imgui.natstepfilter" />
-    <None Include="..\..\misc\debuggers\imgui.natvis" />
-  </ItemGroup>
-  <ItemGroup>
-    <Library Include="..\..\freetype\win64\freetype.lib" />
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\packages\Costura.Fody.6.0.0\build\Costura.Fody.targets" Condition="Exists('..\packages\Costura.Fody.6.0.0\build\Costura.Fody.targets')" />
   </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\Costura.Fody.6.0.0\build\Costura.Fody.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Costura.Fody.6.0.0\build\Costura.Fody.props'))" />
+    <Error Condition="!Exists('..\packages\Costura.Fody.6.0.0\build\Costura.Fody.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Costura.Fody.6.0.0\build\Costura.Fody.targets'))" />
+  </Target>
 </Project>

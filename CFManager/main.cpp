@@ -1,8 +1,11 @@
 ﻿#define IMGUI_DEFINE_MATH_OPERATORS
  
 #define NOMINMAX  
-#include "Overlay.h"
-#include <Windows.h>
+#include "ESP/ESP.h"
+#include "Config/globals.h"
+#include "offsets.h"
+#include "Config/config.h"
+ #include <Windows.h>
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
@@ -13,16 +16,20 @@
 #include <algorithm>
 #include <atomic>
 #include <algorithm>
- 
+#include "auth.hpp" 
+#include "../Include/skStr.h"
+#include "../Include/VMProtectSDK.h"
 #include <imgui.h>
 #include <vector>
 #include <array>
 #include <mutex>
+#include <iostream>
+#include <string>
+#include <regex>
 #include <future>
 #include <mutex>
 #include "Memory/Memory.h"
 #include "KMBOX.h"
-#include "offsets.h"
 #include <iostream>
 #include "D3DX11tex.h"
  #pragma comment(lib, "D3DX11.lib")
@@ -34,18 +41,18 @@
 #include "Cache.h"
 #include "CacheManager.h"
 #include <DirectXMath.h>  
+ 
+ 
 using namespace DirectX;
 
- 
+using namespace KeyAuth;
   
 using namespace std::chrono_literals;
  
 CacheManager g_cacheManager;  
-
+inline std::jthread bgThread;
  
-
  
-
 
 static ID3D11Device* g_pd3dDevice = nullptr;
 static ID3D11DeviceContext* g_pd3dDeviceContext = nullptr;
@@ -79,6 +86,7 @@ namespace image
 
 }
 
+
 struct ScopedStyleColor {
     ScopedStyleColor(ImGuiCol idx, const ImVec4& col) { ImGui::PushStyleColor(idx, col); }
     ~ScopedStyleColor() { ImGui::PopStyleColor(1); }
@@ -89,63 +97,38 @@ float tab_size = 0.f;
 float arrow_roll = 0.f;
 bool tab_opening = true;
 int rotation_start_index;
-static bool Dcheckbox = false;
-static bool enableAimbot = false;
-inline float AimFov = 100;
-inline float AimSpeed = 0.5f;
-inline float MaxAimDistance = 100;
-static int firstHotkey = 0;
+ 
 static int selectedSmoothType = 0;
-static bool crosshair_notify = false;
-static bool Headcheckbox = false;
-static bool Healthcheckbox = false;
-static bool showInfoText = true;
+ 
 static bool isMenuFocused = false;
-static bool Namecheckbox = false;
-static bool Distancecheckbox = false;
-static bool weaponcheckbox = false;
-inline bool Filterteams = false;
-static bool showFPS = true;   
-static bool draw_radar = false;
-static bool Bonecheckbox = false;
-static bool showEspLines = false;
-static int esptype = 0;
 inline int target_monitor = -1;
 inline int fps_limit = 144;
 inline int icon_index = 0;
+ 
 inline HINSTANCE hInstance = NULL;
-
+static std::future<bool> updateFuture;
 inline int monitor_enum_state = 0;
  
 inline bool allow_clicks = false;
  
 
-inline int fov = 300; 
- RGBA g_EnemyColor{ 255, 0, 0, 255 };   
- RGBA g_AllyColor{ 0, 255, 0, 255 };  
-RGBA g_ESPLineColor{ 255, 255, 255, 255 };
-RGBA g_NameColor{ 255, 255, 0, 255 };
- RGBA g_HeadColor{ 255, 255, 255, 255 };
-void RGBAtoFloat4(const RGBA& c, float out[4])
-{
-    out[0] = c.R / 255.0f;
-    out[1] = c.G / 255.0f;
-    out[2] = c.B / 255.0f;
-    out[3] = c.A / 255.0f;
+
+
+inline void RGBAtoFloat4(const RGBA& rgba, float* colorFloat4) {
+    colorFloat4[0] = rgba.R / 255.0f;
+    colorFloat4[1] = rgba.G / 255.0f;
+    colorFloat4[2] = rgba.B / 255.0f;
+    colorFloat4[3] = rgba.A / 255.0f;
 }
 
- 
-RGBA Float4toRGBA(const float in[4])
-{
-    RGBA c;
-    c.R = static_cast<uint8_t>(in[0] * 255);
-    c.G = static_cast<uint8_t>(in[1] * 255);
-    c.B = static_cast<uint8_t>(in[2] * 255);
-    c.A = static_cast<uint8_t>(in[3] * 255);
-    return c;
+inline RGBA Float4toRGBA(const float* colorFloat4) {
+    RGBA rgba;
+    rgba.R = static_cast<int>(colorFloat4[0] * 255.0f);
+    rgba.G = static_cast<int>(colorFloat4[1] * 255.0f);
+    rgba.B = static_cast<int>(colorFloat4[2] * 255.0f);
+    rgba.A = static_cast<int>(colorFloat4[3] * 255.0f);
+    return rgba;
 }
-
-
 
 static std::string kmbox_status = "Initializing...";
 static bool kmbox_connected = false;
@@ -161,45 +144,33 @@ static std::mutex status_mutex;
 static std::future<void> update_task;
 static std::atomic<bool> update_in_progress{ false };
 static std::string dma_status = "Not Initialized";
- 
+static std::string g_sanitizedKey;
 static std::atomic<bool> dma_success(false);
 static int initialization_attempts = 0;
 static bool initializing_dma = false;
-static float boxtk = 2.5f;
-static float hptk = 2.1f;
-static float hdtk = 5.f;
-static float bonetk = 1.f;
-inline bool Flogs[6] = { false, false, false, false,false };
-const char* Flogss[6] = { "Head", "Health Bar", "Player Name", "Distance","Weapon"};
+ 
  
 void ImRotateStart()
 {
     rotation_start_index = ImGui::GetWindowDrawList()->VtxBuffer.Size;
 }
  
-
-inline void DrawBoneExternal(ImDrawList* draw, Memory& mem,
-    const D3DXVECTOR3& Bone1Pos, const D3DXVECTOR3& Bone2Pos,
-    ImU32 color,
-    const KLASSES::LT_DRAWPRIM& drawPrim)
-{
-    D3DXVECTOR3 b1 = Bone1Pos;
-    D3DXVECTOR3 b2 = Bone2Pos;
-
-    b1.y += 5;
-    b2.y += 5;
-
-    if (!KLASSES::EngineW2S(drawPrim, &b1) ||
-        !KLASSES::EngineW2S(drawPrim, &b2))
-        return;
-
-    draw->AddLine(ImVec2(b1.x, b1.y), ImVec2(b2.x, b2.y), color, bonetk);
+ 
+std::string sanitizeLicense(const std::string& license) {
+    std::regex validPattern("^CROSSFIRE-[A-Za-z0-9]{6}(?:-[A-Za-z0-9]{6}){3}$", std::regex_constants::icase);
+    if (std::regex_match(license, validPattern))
+        return license;
+    return "";
 }
+
+
+
+
 
 void  full_refresh() {
      
         VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_REFRESH_ALL, 1);
-    
+       
 }
 void InitializeDMA(Memory& mem) {
     initializing_dma = true;
@@ -231,28 +202,28 @@ void InitializeDMA(Memory& mem) {
 
             dma_success.store(true);
 
-            update_status = "Updating Offsets...";
+            UpdateOffsets(mem);
+            while (update_status == "Updating Offsets..." || update_status == "Idle") {
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            }
 
-            bool success = UpdateOffsets(mem); 
-
-           
-            if (success) {
-                update_status = "Offsets Updated";
+            if (update_status == "Offsets Updated")
+            {
                 RUNCACHE = true;
                 g_cacheManager.StartUpdateThread(mem);
             }
-            else {
-                update_status = "Update Failed";
-            }
+             
+          
 
             LOG("[X] Cheats not working? Try Forcing Update!\n");
             LOG("[X] Cheats still not working? Restart your PC, sometimes DMA Device just stops reading!\n");
             LOG("[!] If that fails, then sigs/structs are out of Date!\n");
 
-            
+             
+             
             VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_REFRESH_ALL, 1);
-            VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_CONFIG_PROCCACHE_TICKS_PARTIAL, 600);
-            VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_CONFIG_PROCCACHE_TICKS_TOTAL, 600);
+            VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_CONFIG_PROCCACHE_TICKS_PARTIAL, 300);
+            VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_CONFIG_PROCCACHE_TICKS_TOTAL, 1200);
         }
         else {
             if (mem.vHandle) {
@@ -330,15 +301,6 @@ void attempt_kmbox_connection() {
 }
 
 
-
-  
-
-
-
-
- 
-
-
 ImVec2 ImRotationCenter()
 {
     ImVec2 l(FLT_MAX, FLT_MAX), u(-FLT_MAX, -FLT_MAX);  
@@ -358,11 +320,6 @@ void ImRotateEnd(float rad, ImVec2 center = ImRotationCenter())
     for (int i = rotation_start_index; i < buf.Size; i++)
         buf[i].pos = ImRotate(buf[i].pos, s, c) - center;
 }
- 
-
-
-
-
  
 
 
@@ -405,16 +362,178 @@ void set_mouse_passthrough(HWND hwnd) {
 }
 
  
+/*if (!VMProtectIsProtected())
+   {
+
+       Sleep(500);
+       exit(0);
+   }*/
+
+void VerifyLogin()
+{
+
+    if (VMProtectIsDebuggerPresent(true)) {
+        std::cerr << "Unwanted Application Detected.. Exiting.." << std::endl;
+        Sleep(500);
+        exit(0);
+    }
+
+    if (!VMProtectIsValidImageCRC()) {
+        std::cerr << "Corrupted Application...Exiting..." << std::endl;
+        Sleep(500);
+        exit(0);
+    }
+
+    std::string name = skCrypt("CrossfireManager").decrypt();
+    std::string ownerid = skCrypt("6oVNWtNqyj").decrypt();
+    //std::string secret = skCrypt("c50a572025029f144b3d3d6f3c3e93f0d93f591ba172fbc760ca470437e34911").decrypt();
+    std::string version = skCrypt("1.0").decrypt();
+    std::string url = skCrypt("https://keyauth.win/api/1.3/").decrypt();
+    std::string path = skCrypt("").decrypt();
+
+    static api KeyAuthApp(name, ownerid, version, url, path);
+    KeyAuthApp.init();
+
+    std::string key;
+    std::cout << skCrypt("\nEnter license: ") << std::flush;
+    std::cin >> key;
+
+    g_sanitizedKey = sanitizeLicense(key);
+    if (g_sanitizedKey.empty()) {
+        std::cerr << "Invalid license format. Exiting..." << std::endl;
+        Sleep(3500);
+        exit(0);
+    }
 
 
+    KeyAuthApp.license(g_sanitizedKey);
+    if (!KeyAuthApp.response.success) {
+        std::cerr << "\n" << KeyAuthApp.response.message << std::endl;
+        Sleep(3500);
+        exit(0);
+    }
 
 
+    
+
+
+    KeyAuthApp.log(g_sanitizedKey + " logged in");
+
+    if (!KeyAuthApp.user_data.subscriptions.empty()) {
+        auto string_to_timet = [](const std::string& str) -> time_t {
+            try { return static_cast<time_t>(std::stoll(str)); }
+            catch (...) { return 0; }
+            };
+
+        auto timet_to_tm = [](time_t t) -> tm* {
+            return localtime(&t);
+            };
+
+        auto tm_to_readable_time = [](tm* timeinfo) -> std::string {
+            char buffer[80];
+            if (!timeinfo) return "Invalid Time";
+            strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
+            return std::string(buffer);
+            };
+
+        std::string expiryStr = KeyAuthApp.user_data.subscriptions[0].expiry;
+        time_t expiryTime = string_to_timet(expiryStr);
+        tm* expiryTm = timet_to_tm(expiryTime);
+        std::string readableExpiry = tm_to_readable_time(expiryTm);
+        std::cout << "Subscription expiry: " << readableExpiry << std::endl;
+    }
+    else {
+        std::cout << "No Subscription Found... Odd.." << std::endl;
+    }
+
+    bgThread = std::jthread([](std::stop_token st) {
+        bool disconnectCondition = false;
+        bool banCondition = false;
+        std::string disconnectMessage;
+        std::string banMessage;
+        while (!st.stop_requested()) {
+
+            std::this_thread::sleep_for(std::chrono::seconds(30));
+
+            KeyAuthApp.check();
+            if (!KeyAuthApp.response.success) {
+                disconnectCondition = true;
+                disconnectMessage = KeyAuthApp.response.message;
+                break;
+            }
+            KeyAuthApp.license(g_sanitizedKey);
+            if (!KeyAuthApp.response.success) {
+                disconnectCondition = true;
+                disconnectMessage = KeyAuthApp.response.message;
+                break;
+            }
+
+            
+
+           
+            if (KeyAuthApp.user_data.subscriptions.empty()) {
+                disconnectCondition = true;
+                disconnectMessage = KeyAuthApp.response.message;
+                break;
+            }
+
+           /**/ if (IsDebuggerPresent()) {
+                banCondition = true;
+                banMessage = "Account has been Disconnected.";
+                KeyAuthApp.log( " got banned for Debugger");
+                break;
+                
+            }
+
+            if (VMProtectIsDebuggerPresent(true)) {
+                banCondition = true;
+                banMessage = "Account has been Disconnected.";
+                KeyAuthApp.log(" got banned for Debugger");
+                break;
+            }
+
+            if (!VMProtectIsValidImageCRC()) {
+                banCondition = true;
+                banMessage = "Account has been Disconnected.";
+                KeyAuthApp.log(" got banned for modifying exe");
+                break;
+            }
+
+            
+        }
+
+        if (banCondition) {
+            std::string hwid = KeyAuthApp.user_data.hwid;
+            
+            KeyAuthApp.ban(banMessage);
+            std::cerr << banMessage << std::endl;
+            KeyAuthApp.logout();
+            Sleep(1500);
+            exit(0);
+        }
+        if (disconnectCondition) {
+            std::cerr << disconnectMessage << std::endl;
+            KeyAuthApp.logout();
+            Sleep(1500);
+            exit(0);
+        }
+        });
+
+    if (!VMProtectIsValidImageCRC()) {
+        std::string hwid = KeyAuthApp.user_data.hwid;
+        KeyAuthApp.logout();
+        std::cerr << "Invalid image CRC. Exiting..." << std::endl;
+        Sleep(1500);
+        exit(0);
+    }
+
+    std::cout << "License validated. Loading cheat..." << std::endl;
+}
+
+     
  
 
-
-
-
-
+ 
 void EnableGlassTransparency(HWND hwnd, bool enable) {
     if (enable) {
         MARGINS margins = { -1, -1, -1, -1 };
@@ -482,6 +601,7 @@ void Particles()
 
 }
 
+ 
 BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
     MONITORINFOEX monitorInfo = {};
     monitorInfo.cbSize = sizeof(MONITORINFOEX);
@@ -521,12 +641,10 @@ void set_monitor(int index, HWND hwnd) {
 
 
 
-
-
-
-
 int main(int, char**)
 {
+    SetConsoleTitleA("MakimuraLoader");
+    VerifyLogin();
     WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"Makimura", nullptr };
     ::RegisterClassExW(&wc);
     int x = GetSystemMetrics(SM_XVIRTUALSCREEN);
@@ -542,7 +660,7 @@ int main(int, char**)
         wc.lpszClassName,
         L"Makimura",
         WS_POPUP,
-        100, 100, primaryWidth, primaryHeight,
+        150, 150, primaryWidth, primaryHeight,
         nullptr, nullptr, wc.hInstance, nullptr);
 
    
@@ -559,6 +677,9 @@ int main(int, char**)
 
    ::ShowWindow(hwnd, SW_SHOWDEFAULT);
    ::UpdateWindow(hwnd);
+
+    
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -669,18 +790,22 @@ int main(int, char**)
             if (showMenu) {
                 ImGui::Begin("IMGUI MENU", &showMenu, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoBackground);
                 {
-
-
-
+                    
                     if (!showMenu)
                     {
                       
                         return 0;
                     }
 
-
-
-
+                     
+                    std::string displayKey = g_sanitizedKey;
+                    size_t lastDash = displayKey.rfind('-');
+                    if (lastDash != std::string::npos) {
+                        size_t secondLastDash = displayKey.rfind('-', lastDash - 1);
+                        if (secondLastDash != std::string::npos) {
+                            displayKey = displayKey.substr(secondLastDash + 1);
+                        }
+                    }
                     const ImVec2& pos = ImGui::GetWindowPos();
                     const auto& p = ImGui::GetWindowPos();
                     const ImVec2 spacing = ImGui::GetStyle().ItemSpacing;
@@ -692,8 +817,9 @@ int main(int, char**)
 
                     ImGui::PushFont(font::tahoma_bold2); ImGui::RenderTextClipped(pos + ImVec2(60, 0) + spacing, pos + spacing + ImVec2(60, 60) + ImVec2(tab_size + (spacing.x / 2) - 30, 0), "CrossfireV1 ", NULL, NULL, ImVec2(0.5f, 0.5f), NULL); ImGui::PopFont();
 
-                    ImGui::RenderTextClipped(pos + ImVec2(60 + spacing.x, c::bg::size.y - 60 * 2), pos + spacing + ImVec2(60, c::bg::size.y) + ImVec2(tab_size, 0), "Creator", NULL, NULL, ImVec2(0.0f, 0.43f), NULL);
-                    ImGui::RenderTextClipped(pos + ImVec2(60 + spacing.x, c::bg::size.y - 60 * 2), pos + spacing + ImVec2(60, c::bg::size.y) + ImVec2(tab_size, 0), "Kaori_Makimura", NULL, NULL, ImVec2(0.0f, 0.57f), NULL);
+                    ImGui::RenderTextClipped(pos + ImVec2(60 + spacing.x, c::bg::size.y - 60 * 2), pos + spacing + ImVec2(60, c::bg::size.y) + ImVec2(tab_size, 0), "User", NULL, NULL, ImVec2(0.0f, 0.43f), NULL);
+                     
+                    ImGui::RenderTextClipped(pos + ImVec2(60 + spacing.x, c::bg::size.y - 60 * 2), pos + spacing + ImVec2(60, c::bg::size.y) + ImVec2(tab_size, 0), displayKey.c_str(), NULL, NULL, ImVec2(0.0f, 0.57f), NULL);
 
                     ImGui::PushFont(font::tahoma_bold2); ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(250, 255, 255, 255)); ImGui::RenderTextClipped(pos + ImVec2(0, 0) + spacing, pos + spacing + ImVec2(60, 40) + ImVec2(tab_size + (spacing.x / 2) + 199, 0), "MakimuraDMA", NULL, NULL, ImVec2(1.f, 0.5f), NULL); ImGui::PopFont(); ImGui::PopStyleColor();
 
@@ -712,7 +838,7 @@ int main(int, char**)
 
                     ImVec2 textPos = ImGui::GetCursorScreenPos();
                     if (ImGui::Button("I", ImVec2(30, 30))) {
-                        ShellExecute(0, 0, L"https://discord.com/invite/makcu", 0, 0, SW_SHOW);
+                        ShellExecute(0, 0, L"https://discord.com/users/makimura.dev", 0, 0, SW_SHOW);
 
                     }
                     ImGui::GetWindowDrawList()->AddText(textPos, ImGui::GetColorU32(ImGuiCol_Text), "I");
@@ -743,7 +869,7 @@ int main(int, char**)
                     const char* nametab_array1[6] = { "E", "D", "A", "B", "C","F" };
 
                     const char* nametab_array[6] = { "Aimbot", "Visuals", "World", "Configs", "Settings", "Miscallenous " };
-                    const char* nametab_hint_array[6] = { "Rcs,Trigger", "ESP,Chams", "World Modifications", "Save your settings", "DMA Setup/Update","More Cheats" };
+                    const char* nametab_hint_array[6] = { "Rcs,Trigger", "ESP,Radar", "World Modifications", "Save your settings", "DMA Setup/Update","More Cheats" };
 
 
                     static int tabs = 0;
@@ -795,7 +921,7 @@ int main(int, char**)
                         
                         
                         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.53f, 0.81f, 0.98f, 0.25f));
-                        ImGui::SetCursorPos(ImVec2(40 + tab_size, 90) + (s->ItemSpacing * 2));
+                        ImGui::SetCursorPos(ImVec2(60 + tab_size, 90) + (s->ItemSpacing * 2));
                         ImGui::BeginGroup();
                         {
                             ImGui::BeginChild("E", "Aimbot ", ImVec2(panelWidth, panelHeight), true );
@@ -928,7 +1054,7 @@ int main(int, char**)
 
 
 
-                                ImGui::MultiCombo("Flags", Flogs, Flogss, 5);
+                                ImGui::MultiCombo("Flags", Flogs, Flogss, 4);
 
 
                                 ImGui::Separator();
@@ -975,23 +1101,33 @@ int main(int, char**)
                                 ImGui::Combo("Color Editor", &currentColorSelection, colorChoices, IM_ARRAYSIZE(colorChoices));
 
 
-                                static float colorTemp[4] = { 0.f, 0.f, 0.f, 1.f };
+                                static float colorTemp[4] = { 1.f, 1.f, 1.f, 1.f };
 
 
                                 
-                                if (currentColorSelection == 0) RGBAtoFloat4(g_EnemyColor, colorTemp);
-                                else if (currentColorSelection == 1) RGBAtoFloat4(g_ESPLineColor, colorTemp);
-                                else if (currentColorSelection == 2) RGBAtoFloat4(g_NameColor, colorTemp);
-                                else if (currentColorSelection == 3) RGBAtoFloat4(g_HeadColor, colorTemp);
-                                else if (currentColorSelection == 4) RGBAtoFloat4(g_AllyColor, colorTemp);
+                                switch (currentColorSelection) {
+                                case 0: RGBAtoFloat4(g_EnemyColor, colorTemp); break;
+                                case 1: RGBAtoFloat4(g_ESPLineColor, colorTemp); break;
+                                case 2: RGBAtoFloat4(g_NameColor, colorTemp); break;
+                                case 3: RGBAtoFloat4(g_HeadColor, colorTemp); break;
+                                case 4: RGBAtoFloat4(g_AllyColor, colorTemp); break;
+                                }
 
-                                if (ImGui::ColorEdit4("##ColorPicker", colorTemp, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreview)) {
+                               
+                                if (ImGui::ColorEdit4("##ColorPicker", colorTemp,
+                                    ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreview |
+                                    ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_NoInputs))
+                                {
                                     RGBA newColor = Float4toRGBA(colorTemp);
-                                    if (currentColorSelection == 0) g_EnemyColor = newColor;
-                                    else if (currentColorSelection == 1) g_ESPLineColor = newColor;
-                                    else if (currentColorSelection == 2) g_NameColor = newColor;
-                                    else if (currentColorSelection == 3) g_HeadColor = newColor;
-                                    else if (currentColorSelection == 4) g_AllyColor = newColor;
+
+                                   
+                                    switch (currentColorSelection) {
+                                    case 0: g_EnemyColor = newColor; break;
+                                    case 1: g_ESPLineColor = newColor; break;
+                                    case 2: g_NameColor = newColor; break;
+                                    case 3: g_HeadColor = newColor; break;
+                                    case 4: g_AllyColor = newColor; break;
+                                    }
                                 }
                                 ImGui::PopItemWidth();
                             }
@@ -1030,7 +1166,7 @@ int main(int, char**)
                                         break;
 
                                     case 1:
-                                        DrawCornerBox(
+                                        ESP::DrawCornerBox(
                                             static_cast<int>(boxTopLeft.x),
                                             static_cast<int>(boxTopLeft.y),
                                             static_cast<int>(boxW),
@@ -1166,7 +1302,7 @@ int main(int, char**)
                         ImGui::SetCursorPos(ImVec2(30 + tab_size, 60) + (s->ItemSpacing * 2));
                         ImGui::BeginGroup();
                         {
-                             
+                            
                             extern std::vector<std::string> GetCheatConfigList();
                             extern std::string getCheatConfigDir();
                             extern void SaveCheatConfig(const std::string & configName);
@@ -1177,11 +1313,11 @@ int main(int, char**)
                             ImGui::BeginChild("B", "Config Menu", childSize, true);
                             {
 
-                                 
+                                
                                 static char configName[64] = "default";
                                        
                                 static std::vector<std::string> configList;
-
+                                configList = GetCheatConfigList();
                                 ImGui::PushItemWidth(300);   
                                 ImGui::InputText("Config Name", configName, IM_ARRAYSIZE(configName));
                                 
@@ -1294,7 +1430,7 @@ int main(int, char**)
                                     else {
                                         if (ImGui::Button("Initialize DMA", ImVec2(ImGui::GetContentRegionAvail().x - s->WindowPadding.x, 25))) {
                                             InitializeDMA(mem);
-                                            
+
 
 
                                         }
@@ -1314,7 +1450,7 @@ int main(int, char**)
                                 ImGui::PopFont();
                                 ImGui::Separator();
 
-                                // DMA Content
+
                                 ImGui::Spacing();
                                 ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Status:");
                                 ImGui::SameLine();
@@ -1323,24 +1459,24 @@ int main(int, char**)
                                     ImVec4(0.0f, 1.0f, 1.0f, 1.0f) : ImVec4(1.0f, 0.5f, 0.0f, 1.0f),
                                     "%s", update_status.c_str()
                                 );
+
                                 if (ImGui::Button("Force Update Config", ImVec2(ImGui::GetContentRegionAvail().x - s->WindowPadding.x, 25))) {
                                     ClearConfig();
                                     LOG("[!] Cleared the Config...\n");
-                                    update_status = "Updating Offsets...";
+                                     UpdateOffsets(mem);
+                                      
+                                     while (update_status == "Updating Offsets...") {
+                                         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                                     }
 
-                                    bool success = UpdateOffsets(mem);
-
-
-                                    if (success) {
-                                        update_status = "Offsets Updated";
-                                        RUNCACHE = true;
-                                        g_cacheManager.StartUpdateThread(mem);
-                                    }
-                                    else {
-                                        update_status = "Update Failed";
-                                    }
+                                     if (update_status == "Offsets Updated")
+                                     {
+                                         RUNCACHE = true;
+                                         g_cacheManager.StartUpdateThread(mem);
+                                     }
                                 }
                             }
+                        
                             ImGui::EndChild();
 
                             ImGui::BeginChild(" ", " Menu Overlay", ImVec2((c::bg::size.x - 80 - s->ItemSpacing.x * 3) / 2, 100), true);
@@ -1441,18 +1577,18 @@ int main(int, char**)
                                 ImGui::Text("Mouse Status:");
                                 ImGui::SameLine();
                                 ImGui::TextColored(
-                                    mouse_move_status == "Moving..." ? ImVec4(1.0f, 0.5f, 0.0f, 1.0f) :  // Orange when moving
-                                    ImVec4(0.0f, 1.0f, 0.0f, 1.0f),  // Green when done
+                                    mouse_move_status == "Moving..." ? ImVec4(1.0f, 0.5f, 0.0f, 1.0f) :  
+                                    ImVec4(0.0f, 1.0f, 0.0f, 1.0f),  
                                     "%s", mouse_move_status.c_str()
                                 );
                                 if (ImGui::Button("Test Mouse Movement", ImVec2(ImGui::GetContentRegionAvail().x - s->WindowPadding.x, 25))) {
                                     if (kmbox_connected) {
                                         mouse_move_status = "Moving...";
 
-                                        // Run movement in a separate thread to avoid blocking UI
+                                       
                                         std::thread([]() {
                                             kmBoxBMgr.km_move_auto(150, 250, 2);
-                                            std::this_thread::sleep_for(std::chrono::milliseconds(500)); // Simulate movement delay
+                                            std::this_thread::sleep_for(std::chrono::milliseconds(500));
                                             mouse_move_status = "Done";
                                             }).detach();
                                     }
@@ -1476,6 +1612,7 @@ int main(int, char**)
                                     if (ImGui::Button("Exit", ImVec2(ImGui::GetContentRegionAvail().x - s->WindowPadding.x, 25))) {
 
                                         LOG("[!]See ya !\n");
+                                        bgThread.request_stop();
                                         std::this_thread::sleep_for(std::chrono::milliseconds(300));
                                         exit(0);
 
@@ -1529,7 +1666,7 @@ int main(int, char**)
             }
             if (showInfoText)
             {
-
+                Particles();
                 int screenWidth = GetSystemMetrics(SM_CXSCREEN);
                 int screenHeight = GetSystemMetrics(SM_CYSCREEN);
                 ImDrawList* bgDraw = ImGui::GetBackgroundDrawList();
@@ -1576,7 +1713,7 @@ int main(int, char**)
                 outlined_text(fpsTextPos, IM_COL32(255, 255, 255, 255), fpsBuffer);
                 ImGui::PopFont();
             }
-
+             
 
             if (draw_radar && RUNCACHE)
             {
@@ -1593,7 +1730,7 @@ int main(int, char**)
                     float radarMaxDistance = 7000.0f;
                     if (!snapshot)
                     {
-                        LOG("Radar Crash: snapshot is nullptr!");
+                        LOG("Radar Crash!");
                         draw_radar = FALSE;
                     }
                     ImGui::SetNextWindowPos(radarPos, ImGuiCond_FirstUseEver);
@@ -1687,291 +1824,18 @@ int main(int, char**)
 
 
                 ImGui::End();
-
-
-
+                
                 if (shouldDraw && RUNCACHE) {
                     lastUpdate = now;
                     ImDrawList* draw = ImGui::GetForegroundDrawList();
                     g_cacheManager.StartUpdateThread(mem);
                     auto snapshot = g_cacheManager.GetSnapshot();
+                    Render(mem, snapshot, draw);
 
-
-                    
-                    if (snapshot) {
-                        for (const auto& enemy : snapshot->enemies) {
-
-                            if (!snapshot->m_clientShell.inGame())
-                            {
-                                snapshot->enemies.clear();
-                            }
-
-
-                            bool isAlly = (enemy.Team == snapshot->localTeam);
-
-                            if (Filterteams && isAlly)
-                                continue;
-
-                            if (enemy.IsDead)
-                                continue;
-
-
-                            D3DXVECTOR3 headPos = enemy.HeadPos;
-                            D3DXVECTOR3 footPos = enemy.FootPos;
-
-
-
-                            if (!EngineW2S(snapshot->drawPrim, &headPos) || !EngineW2S(snapshot->drawPrim, &footPos))
-                                continue;
-
-
-                            float height = fabs(footPos.y - headPos.y) * 1.15f;
-                            float width = height * 0.6f;
-
-                            float x = headPos.x - width / 2;
-                            float y = headPos.y - (height * 0.15f);
-
-                            RGBA finalColor = isAlly ? g_AllyColor : g_EnemyColor;
-
-
-                            float dx = enemy.AbsPos.x - snapshot->localAbsPos.x;
-                            float dy = enemy.AbsPos.y - snapshot->localAbsPos.y;
-                            float dz = enemy.AbsPos.z - snapshot->localAbsPos.z;
-                            float distanceMeters = std::fmaxf((sqrtf(dx * dx + dy * dy + dz * dz) - 400.0f) / 100.0f, 0.0f);
-
-                            float scaleFactor = std::clamp(1.5f - (distanceMeters / 50.0f), 0.6f, 1.2f);
-
-                            if (fov == 0 || distanceMeters > fov) continue;
-
-
-                            std::string playerName = std::string(enemy.Name, strnlen(enemy.Name, sizeof(enemy.Name)));
-
-
-                            RectData rect;
-                            rect.x = x;
-                            rect.y = y;
-                            rect.w = width;
-                            rect.h = height;
-                            rect.color = finalColor;
-                            rect.playerName = playerName;
-                            rect.currentHP = enemy.Health;
-                            rect.maxHP = 100;
-                            rect.headPos = headPos;
-                            rect.isAlly = (enemy.Team == snapshot->localTeam);
-
-
-
-                            if (Flogs[0]) {
-                                ImVec2 crosshairCenter(
-                                    snapshot->drawPrim.viewport.X + snapshot->drawPrim.viewport.Width * 0.5f,
-                                    snapshot->drawPrim.viewport.Y + snapshot->drawPrim.viewport.Height * 0.5f
-                                );
-
-                                
-                                float dx = rect.headPos.x - crosshairCenter.x;
-                                float dy = rect.headPos.y - crosshairCenter.y;
-                                float distance = sqrtf(dx * dx + dy * dy);
-                                
-                                float headRadius = 0.4f + hdtk;
-                                float threshold = 40.0f;
-                                ImVec2 headCenter(headPos.x - 3.0f, headPos.y - 8.0f);
-
-                                draw->AddCircleFilled(
-                                    headCenter,
-                                    headRadius,
-                                    IM_COL32(g_HeadColor.R, g_HeadColor.G, g_HeadColor.B, g_HeadColor.A)
-    
-                                );
-                                if (distance < threshold && crosshair_notify) {
-
-                                    if (!rect.isAlly)
-                                    {
-                                        ImVec2 shootPos(rect.headPos.x + 20.0f, rect.headPos.y - 25.0f);
-
-                                        ImGui::PushFont(font::tahoma_bold2);
-
-                                        draw->AddText(shootPos, IM_COL32(255, 0, 0, 255), "Shoot!");
-                                        ImGui::PopFont();
-                                     }
-                                     
-                                    
-                                }
-                            }
-
-                            
-                            if (Dcheckbox) {
-
-                                
-                                switch (esptype) {
-                                case 0:
-                                    draw->AddRect(
-                                        ImVec2(rect.x, rect.y),
-                                        ImVec2(rect.x + rect.w, rect.y + rect.h),
-                                        IM_COL32(rect.color.R, rect.color.G, rect.color.B, rect.color.A),
-                                        0.0f, ImDrawFlags_Closed, boxtk * scaleFactor
-                                    );
-                                    break;
-
-                                case 1:
-                                    DrawCornerBox(rect.x, rect.y, rect.w, rect.h, boxtk * scaleFactor, rect.color);
-                                    break;
-
-                                case 2:
-                                    draw->AddRectFilled(
-                                        ImVec2(static_cast<float>(rect.x), static_cast<float>(rect.y)),
-                                        ImVec2(static_cast<float>(rect.x + rect.w), static_cast<float>(rect.y + rect.h)),
-                                        IM_COL32(rect.color.R, rect.color.G, rect.color.B, rect.color.A / 3)
-                                    ); 
-
-                                    draw->AddRect(
-                                        ImVec2(static_cast<float>(rect.x), static_cast<float>(rect.y)),
-                                        ImVec2(static_cast<float>(rect.x + rect.w), static_cast<float>(rect.y + rect.h)),
-                                        IM_COL32(rect.color.R, rect.color.G, rect.color.B, rect.color.A),
-                                        0.0f, ImDrawFlags_Closed, boxtk * scaleFactor
-                                    );
-                                    break;
-                                }
-
-                            }
-
-
-                            if (showEspLines && !rect.isAlly && snapshot->m_clientShell.inGame()) {
-
-                                auto PRIME = snapshot->drawPrim;
-                                int vpWidth = PRIME.viewport.Width;
-                                int vpHeight = PRIME.viewport.Height;
-                                ImVec2 viewportCenter(vpWidth * 0.5f, vpHeight);
-                                ImVec2 enemyScreenPos(rect.x + rect.w / 2, rect.y + rect.h / 2);
-
-                                float midX = (viewportCenter.x + enemyScreenPos.x) / 2.0f;
-
-                                float distance = sqrtf(powf(enemyScreenPos.x - viewportCenter.x, 2) + powf(enemyScreenPos.y - viewportCenter.y, 2));
-                                float arcHeight = distance * 0.2f;
-                                float animOffset = sinf(ImGui::GetTime() * 3.0f) * 10.0f;
-
-                                float midY = (std::min)(viewportCenter.y, enemyScreenPos.y) - arcHeight + animOffset;
-
-                                ImVec2 p2(midX, midY);
-                                ImVec2 p3(midX, midY);
-
-                                ImU32 colU32 = IM_COL32(g_ESPLineColor.R, g_ESPLineColor.G, g_ESPLineColor.B, g_ESPLineColor.A);
-
-                                draw->AddBezierCubic(viewportCenter, p2, p3, enemyScreenPos, colU32, 6.0f, 10);
-                            }
-
-
-
-                            if (Flogs[1]) {
-
-
-                                float healthPercent = std::clamp(static_cast<float>(enemy.Health) / 100.0f, 0.0f, 1.0f);
-
-                                float barWidth = 5.0f + hptk;
-                                float barHeight = rect.h * healthPercent;
-                                float barX = rect.x - barWidth - 5;
-                                float barY = rect.y + rect.h - barHeight;
-
-
-                                draw->AddRectFilled(
-                                    ImVec2(barX, rect.y),
-                                    ImVec2(barX + barWidth, rect.y + rect.h),
-                                    IM_COL32(50, 50, 50, 150)
-                                );
-
-
-                                draw->AddRectFilled(
-                                    ImVec2(barX, barY),
-                                    ImVec2(barX + barWidth, rect.y + rect.h),
-                                    GetHealthColor(healthPercent)
-                                );
-
-
-                                draw->AddRect(
-                                    ImVec2(barX, rect.y),
-                                    ImVec2(barX + barWidth, rect.y + rect.h),
-                                    IM_COL32(255, 255, 255, 255),
-                                    0.0f, 0, 1.0f
-                                );
-
-
-                            }
-
-                            if (Flogs[2]) {
-                                ImVec2 textSize = ImGui::CalcTextSize(rect.playerName.c_str());
-                                draw->AddText(ImVec2(rect.x + (rect.w - textSize.x) * 0.5f, rect.y - textSize.y - 2.0f),
-                                    IM_COL32(g_NameColor.R, g_NameColor.G, g_NameColor.B, g_NameColor.A)
-                                    , rect.playerName.c_str());
-                            }
-
-                            if (Flogs[3]) {
-                                char distanceText[32];
-                                sprintf(distanceText, "%.1fm", distanceMeters);
-
-                                ImVec2 textSize = ImGui::CalcTextSize(distanceText);
-                                float textX = rect.x + (rect.w - textSize.x) * 0.5f;
-                                float textY = rect.y + rect.h + 2.0f;
-
-                                draw->AddText(
-                                    ImVec2(textX, textY),
-                                    IM_COL32(255, 255, 255, 255),
-                                    distanceText
-                                );
-                            }
-
-                            if (Flogs[4]) {
-                                ImGui::SetCursorPos(ImVec2(254, 23));
-                                ImVec2 pos1 = ImGui::GetCursorScreenPos();
-                                draw->AddText(ImVec2(pos1.x, pos1.y), ImColor(255, 255, 255, 255), "M416");
-                            } 
-                             
-                          
-
-                            if (Bonecheckbox)
-                            {
-
-                                 
-                                std::vector<int>  boneGroups = {
-
-                                     6,  5,  4,  3,   1 ,
-                                    21, 22, 23,  25, 26 ,
-                                    27,  14, 15, 16, 17 ,
-                                     7, 8, 9 ,
-                                    10,
-                                };
-                                for (auto& enemy : snapshot->enemies)
-                                {
-                                    bool isAlly = (enemy.Team == snapshot->localTeam);
-
-                                    if (Filterteams && isAlly)
-                                        continue;
-
-                                    if (enemy.IsDead)
-                                        continue;
-
-                                    RGBA boneColor = (enemy.Team == snapshot->localTeam) ? g_AllyColor : g_HeadColor;
-
-                                    DrawAllBones(
-                                        draw,
-                                        mem,
-                                        reinterpret_cast<uintptr_t>(enemy.hObject),
-                                        boneGroups,
-                                        enemy.bones,  
-                                        snapshot->drawPrim,
-                                        IM_COL32(boneColor.R, boneColor.G, boneColor.B, boneColor.A)
-                                    );
-                           }
-
-                                }
-                            }
-
-                        }
-
-
-                    
 
                 }
             }
-            
+
         }
       
         ImGui::Render();
@@ -1995,11 +1859,7 @@ int main(int, char**)
     return 0;
    }
 
- 
 
- 
-
- 
 bool CreateDeviceD3D(HWND hWnd)
 {
     DXGI_SWAP_CHAIN_DESC sd;
@@ -2131,12 +1991,6 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         }
         return 0;
     }
-
-
-
-
-
-
 
 
     case WM_DESTROY:

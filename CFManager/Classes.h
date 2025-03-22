@@ -206,7 +206,7 @@ namespace KLASSES {
             return GetPlayerByIndex(localIdx);
         }
         
-
+         
         bool inGame() {
             return (this->CPlayerClntBase != nullptr);
         }
@@ -378,6 +378,7 @@ namespace KLASSES {
                         std::this_thread::sleep_for(std::chrono::milliseconds(100));
                         continue;
                     }
+                    
 
                     uintptr_t toggleBagAddr =
                         (uintptr_t)gameUI.CSetWeaponUI + offsetof(pBag, ToggleBag);
@@ -396,21 +397,21 @@ namespace KLASSES {
 
     class pPlayerClntBase {
     public:
-        char pad_0000[728];                    // 0x0000
-        int32_t Ammo;                          // 0x02D8
-        int32_t MaxAmmo;                       // 0x02DC
-        char pad_02E0[24];                     // 0x02E0
-        PlayerViewManager* PlayerViewManager;  // 0x02F8
-        char pad_0300[608];                    // 0x0300
-        void* firststModelInstance;            // 0x0560
-        void* secondndModelInstance;           // 0x0568
-        char pad_0570[8];                      // 0x0570
-        float Yaw;                             // 0x0578
-        char pad_057C[4];                      // 0x057C
-        float Pitch;                           // 0x0580
-        char pad_0584[684];                    // 0x0584
-        int32_t N0000056A;                     // 0x0830
-        char pad_0834[272];                    // 0x0834
+        char pad_0000[728]; //0x0000
+        int32_t Ammo; //0x02D8
+        int32_t MaxAmmo; //0x02DC
+        char pad_02E0[24]; //0x02E0
+        void* PlayerViewManager; //0x02F8
+        char pad_0300[608]; //0x0300
+        void* FirstModel; //0x0560
+        void* SecondModel; //0x0568
+        char pad_0570[8]; //0x0570
+        float Yaw; //0x0578
+        char pad_057C[4]; //0x057C
+        float Pitch; //0x0580
+        char pad_0584[1428]; //0x0584
+        Vector2 ViewAngles; //0x0B18
+        char pad_0B20[2336]; //0x0B20
 
         static void nospread(Memory& mem) {
             std::thread([&mem]() {

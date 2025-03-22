@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../Config/config.h"
 #include "../CFManager/Classes.h"
 #include "Memory.h"
 #include "../CFManager/offsets.h"
@@ -9,7 +10,6 @@
 #include <chrono>
 #include <d3dx9math.h>
 #include <cstddef>
- 
  
 constexpr size_t NUM_BONES = 19;
 namespace ESP {
@@ -24,6 +24,7 @@ namespace ESP {
         D3DXVECTOR3 HeadPos;
         D3DXVECTOR3 FootPos;
         D3DXVECTOR3 AbsPos;
+        
         bool IsDead;
         std::array<D3DXVECTOR3, NUM_BONES> bones;
         
@@ -36,6 +37,7 @@ namespace ESP {
         bool localIsDead;
         float localYaw;
         float localPitch;
+        uintptr_t local_angles;
         int localTeam;  
         KLASSES::LT_DRAWPRIM drawPrim;
         KLASSES::LTClientShell m_clientShell;
@@ -83,6 +85,7 @@ namespace ESP {
             snap.localYaw = m_localYaw;
             snap.localPitch = m_localPitch;
             snap.localTeam = m_localPlayer.Team;
+            snap.local_angles = m_viewangles;
             snap.drawPrim = mem.Read<KLASSES::LT_DRAWPRIM>(offs::ILTDrawPrim);
             snap.m_clientShell = mem.Read<KLASSES::LTClientShell>(LT_SHELL);
             snap.enemies = m_minimalPlayers;
@@ -97,6 +100,7 @@ namespace ESP {
             m_localIsDead = false;
             m_localYaw = 0.0f;
             m_localPitch = 0.0f;
+            m_viewangles = 0;
             for (auto& buffer : m_players) {
                 buffer.fill(KLASSES::pPlayer{});
             }
@@ -120,6 +124,7 @@ namespace ESP {
         bool m_localIsDead;
         float m_localYaw;
         float m_localPitch;
+        uintptr_t m_viewangles;
         std::array<KLASSES::pPlayer, MAX_PLAYERS> m_players[2];
         std::atomic<int> m_activeBuffer{ 0 };
         std::atomic<bool> m_entityUpdateInProgress{ false };
@@ -147,6 +152,7 @@ namespace ESP {
                 uintptr_t playerAddr = reinterpret_cast<uintptr_t>(m_localPlayer.hObject);
                 uintptr_t characFXAddr = reinterpret_cast<uintptr_t>(m_localPlayer.characFX);
                 uintptr_t clntBaseAddr = reinterpret_cast<uintptr_t>(m_clientShell.CPlayerClntBase);
+                m_viewangles = clntBaseAddr + offsetof(KLASSES::pPlayerClntBase, ViewAngles);
 
                 
                 mem.AddScatterReadRequest(m_scatterHandle,
@@ -239,12 +245,6 @@ namespace ESP {
 
             mem.ExecuteReadScatter(m_scatterHandle);
 
-
-
-
-
-
-
             return true;
         }
 
@@ -268,9 +268,11 @@ namespace ESP {
                 const bool bulkSuccess = mem.Read(
                     ENTITY_BASE,
                     targetBuffer.data(),
-                    sizeof(KLASSES::pPlayer) * MAX_PLAYERS
-                );
+                    offs::dwCPlayerSize * MAX_PLAYERS
 
+                );
+                 
+                   
                 if (!bulkSuccess) {
                     for (int i = 0; i < MAX_PLAYERS; ++i) {
                         targetBuffer[i] = m_clientShell.GetPlayerByIndex(i);
@@ -281,7 +283,7 @@ namespace ESP {
 
                 for (const auto& player : targetBuffer) {
                     for (size_t j = 0; j < sizeof(player.Name); ++j) {
-                        newChecksum = (newChecksum << 5) - newChecksum + static_cast<uint8_t>(player.Name[j] + static_cast<int>(player.Health) + player.Spectator + player.ClientID);
+                        newChecksum = (newChecksum << 5) - newChecksum + static_cast<uint8_t>(player.Name[j] + static_cast<int>(player.Health) + player.Spectator +  player.ClientID);
                     }
 
                 }

@@ -15,6 +15,7 @@
     - Distance
     - Weapon(soon)
    - Bones
+   - See Ghost( Yes it's technically just ESP again but it counts)
    - Distance
    - ESP Colors(Bones, Lines etc)
    - Other

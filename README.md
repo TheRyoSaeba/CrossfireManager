@@ -23,7 +23,7 @@
      - Crosshair Notification
      - Resizeable box/head/bones
 
-- Aimbot(Soon™)
+- Aimbot(https://streamable.com/ejzlft) Work on Aimbot is going Well!
     - Fov
     - Smoothness/Aim speed maybe consolidate
     - Max distance
@@ -40,7 +40,7 @@
   - Working on third person and a bunch of other stuff 
     
 ![preview](https://github.com/user-attachments/assets/2018d25d-3cce-44d8-a061-14bc1792d107)
-  https://streamable.com/ejzlft
+  
 
 
  - Credits

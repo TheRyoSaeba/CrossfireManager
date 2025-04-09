@@ -1,6 +1,9 @@
  [![Discord](https://github.com/user-attachments/assets/4417118b-ea28-4527-b553-6016630e2cc7)](https://discordapp.com/users/makimura.dev)
+Going to be dropping a new Update soon. Will include Aimbot,  Updated Radar and new UI
+ 
+![updated](https://github.com/user-attachments/assets/ade6cc9e-9f15-45b1-994b-b36a1537c512)
 
- The Cheat Requires these specific DLLS with these specific Versions, or it WON'T WORK AS INTENDED. I warned you
+ The Cheat Requires these specific DLLS with these specific Versions, or it WON'T WORK AS INTENDED. I warned you! 
  [MakiDLL.zip](https://github.com/user-attachments/files/19282841/MakiDLL.zip)
 
 ## Features

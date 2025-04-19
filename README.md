@@ -5,7 +5,6 @@
 ## Features
 - Visuals
   - ESP Type (Corner, Regular,Filled,3D)
-  - ESP Preview
   - ESP Lines
   - Selection
     - Head

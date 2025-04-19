@@ -116,7 +116,7 @@ void MoveCursor(float targetX, float targetY, LTClientShell _shell)
     residualX = std::clamp(residualX, -1.0f, 1.0f);
     residualY = std::clamp(residualY, -1.0f, 1.0f);
 
-    
+   
 
     if (finalMoveX != 0 || finalMoveY != 0) {
         kmBoxBMgr.lock_mx();

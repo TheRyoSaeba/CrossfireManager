@@ -1,58 +1,66 @@
 ﻿#pragma once
-#include "../ESP/ESP.h"
-#include "../Config/globals.h"
+#pragma once
+
 #include <cstdint>
-#include <openssl/evp.h>
-#include <openssl/err.h>
-#include <d3d9.h>
-#include <DirectXMath.h>
-#include <fstream>
-#include <sstream>
-#include <iomanip>  
-#include <cstdio>
+#include <string>
 #include <array>
-#include <future>
-#include <unordered_map>
-#include "Classes.h"
-#include "../Config/config.h"
-#include <fstream>
-#include <nlohmann/json.hpp>
-#include <sstream>
-#include <shlobj.h>      
+#include "CFManager.h"
+#include "../Config/globals.h"
 
- static bool showOffsetFinder = false;
-const std::string CONFIG_FILE = "offsets.json";
+//lot of credits to MPGH
 
-using namespace DirectX;
-namespace fs = std::filesystem;
+// ===============================
+//         MODEL NODE
+// ===============================
 
-inline std::string update_status = "Idle";
-const std::string encryptionKey = "0123456789abcdef0123456789abcdef";
-const std::string ivStr = "abcdef9876543210";
+// ModelNode → DamageFactor
+#define NODE_OFFSET     0x30BF978   // mov rdi, cs:qword_7FFDC981F978
+#define NODE_SIZE       0xA4        // 00007FFDC6937D5B: add r14, 0A4h
+
+// ===============================
+//       BUG DAMAGE PATCH
+// ===============================
+
+#define BUG_DAMAGE      0x2FC       // NoBugDamage offset inside CZoneMan
+                                    
+#define ZONE_MGR        0x3380678   //
+/* Constructor:
+                                     call    sub_7FFDC8627FC0
+                                       nop
+                                       ...
+                                       mov cs:qword_7FFDC9AE0678, rax ← CZoneMan */
+// ===============================
+//     SHOOT THROUGH WALL (STW)
+// ===============================
+
+#define TEXTURE_STRUCT_SIZE  0x82C   // TextureType size
+
+#define WALLADDRESS     0x30C0000   // BulletMarkFX base
+#define OFFSET_ONE      0x7DC       // EdgeShotEnabled
+#define OFFSET_TWO      0x7E0       // WallShotEnabled
+#define OFFSET_THREE    0x7E4       // PerfectWall
+
+
+#define WEAPON_MGR      0x32CCE28   // WeaponIndex: mov rcx, qword ptr cs:xmmword_7FFDC9A2CE28
+
+
 
 inline uintptr_t CFBASE = 0;
 inline uintptr_t CFSHELL = 0;
-inline uintptr_t LT_SHELL = 0;
-constexpr int MAX_PLAYERS = 16;
-inline D3DVIEWPORT9 g_view_port;
-
-using json = nlohmann::json;
-inline std::thread offsetThread;
-
-
- 
-
+constexpr int MAX_PLAYERS = 24;
+const float FOV_DEFAULT = 2.094f;
  
 namespace offs {
-
+    
     //============================================================
     // Signature Patterns (Fixed)
     //============================================================
     /*
         LT_PATTERN:
         ---------------------------------------------------------------------
-        00007FF95FDE3865                 lea     r8, aIclientshellDe ; "IClientShell.Default"
-        ________:00007FF95FDE386C         lea     rdx, off_7FF962F25D00
+        :00007FF855806945                 lea     r8, aIclientshellDe ; "IClientShell.Default"
+________:00007FF85580694C                 lea     rdx, off_7FF8589AE2A0 <----
+________:00007FF855806953                 call    qword ptr [rax+20h]
         ---------------------------------------------------------------------
     */
     constexpr auto LT_PATTERN =
@@ -62,7 +70,7 @@ namespace offs {
         DRAWPRIM_PATTERN:
         ---------------------------------------------------------------------
         00000001400195A9                 lea     r8, aIltdrawprimDef ; "ILTDrawPrim.Default"
-        ________:00000001400195B0         lea     rdx, off_140FB6110   + 0x2c70
+        ________:00000001400195B0         lea     rdx, off_140FB6110     <----
         ---------------------------------------------------------------------
     */
     constexpr auto DRAWPRIM_PATTERN =
@@ -71,175 +79,156 @@ namespace offs {
     /*
         MY_OFFSET_PATTERN:
         ---------------------------------------------------------------------
-        00007FF961845E35                 movzx   eax, byte ptr [rbp+292h]
+        00007FF856409ACF                 movzx   eax, byte ptr [rbp+2DAh] <----
+________:00007FF856409AD6                 imul    rcx, rax, 0DD8h
+________:00007FF856409ADD                 movzx   eax, byte ptr [rcx+rbp+2E8h]
         ---------------------------------------------------------------------
     */
     constexpr auto MY_OFFSET_PATTERN =
-        "0F B6 85 ? ? ? ? 48 69 C8 ? ? ? ? 0F B6 84 29 ? ? ? ? 4C 8B 47";
+        "0F B6 85 ? ? ? ? 48 69 C8 D8 0D 00 00 0F B6 84 29 ? ? ? ? 0F BE C0 44 3B F8";
 
     /*
         MY_PLAYERSIZE_PATTERN:
         ---------------------------------------------------------------------
-        00007FF961845E3C                 imul    rcx, rax, 0DC8h
+       00007FF856409ACF                 movzx   eax, byte ptr [rbp+2DAh]
+________:00007FF856409AD6                 imul    rcx, rax, 0DD8h   <----
+________:00007FF856409ADD                 movzx   eax, byte ptr [rcx+rbp+2E8h]
         ---------------------------------------------------------------------
     */
     constexpr auto MY_PLAYERSIZE_PATTERN =
-        "48 69 C8 ? ? ? ? 0F B6 84 29 ? ? ? ? 4C 8B 47";
+        "48 69 C8 D8 0D 00 00 0F B6 84 29 ? ? ? ? 0F BE C0 44 3B F8";
 
     /*
         Additional Player Info:
         ---------------------------------------------------------------------
-        Player start is the model instance right before this address.
-        00007FF961845E43                 movzx   eax, byte ptr [rcx+rbp+2A0h]
+        Player start is the model instance right before this address in Reclass .
+        00007FF856409ADD                 movzx   eax, byte ptr [rcx+rbp+2E8h]
         ---------------------------------------------------------------------
     */
 
-    //============================================================
-    // Memory Offsets
-    //============================================================
+    constexpr auto PLAYER_START_PATTERN = "48 8B 88 ? ? ? ? 48 2B 88 ? ? ? ? 48 C1 F9 03 85 C9 74";
+    /*
+
+       MY_PLAYER_START_PATTERN:
+    00007FF8569AE3DC                 mov     rcx, [rax + 2E0h]  <----
+        ________:00007FF8569AE3E3                 sub     rcx, [rax + 2D8h]
+        ________ : 00007FF8569AE3EA                 sar     rcx, 3
+        ________ : 00007FF8569AE3EE                 test    ecx, ecx
+        ________ : 00007FF8569AE3F0                 jz      short loc_7FF8569AE3FB
+        ________ : 00007FF8569AE3F2                 test    bl, bl
+        ________ : 00007FF8569AE3F4                 jz      short loc_7FF8569AE3FB
+        ________ : 00007FF8569AE3F6 xor r8d, r8d
+        ________ : 00007FF8569AE3F9                 jmp     short loc_7FF8569AE402
+        ________ : 00007FF8569AE3FB; -------------------------------------------------------------------------- -
+        ________:00007FF8569AE3FB
+        ________ : 00007FF8569AE3FB loc_7FF8569AE3FB : ; CODE XREF : sub_7FF8569AE2C0 + 112↑j
+        ________ : 00007FF8569AE3FB; sub_7FF8569AE2C0 + 130↑j ...
+        ________:00007FF8569AE3FB                 mov     r8b, 1
+        ________ : 00007FF8569AE3FE                 mov     rdx, [rdi + 20h]
+        ________ : 00007FF8569AE402
+        ________ : 00007FF8569AE402 loc_7FF8569AE402 : ; CODE XREF : sub_7FF8569AE2C0 + 139↑j
+        ________ : 00007FF8569AE402                 mov     rcx, [rdx + 38h]
+        ________ : 00007FF8569AE406                 mov     rax, [rcx]
+        ________ : 00007FF8569AE409                 xorps   xmm2, xmm2
+        ________ : 00007FF8569AE40C                 movzx   edx, r8b
+        ________ : 00007FF8569AE410                 call    qword ptr[rax + 2E8h]*/
+
+        //============================================================
+        // Memory Offsets
+        //============================================================
     inline uintptr_t MYOFFSET = 0;
-    inline uintptr_t dwCPlayerStart = 0x298;
-    inline uintptr_t dwCPlayerSize = 0;
+    inline  uintptr_t dwCPlayerStart = 0;
+    inline   uintptr_t dwCPlayerSize = 0;
     inline uintptr_t ILTDrawPrim = 0;
+    inline uintptr_t LT_SHELL = 0;
 
-
-    
 }
 
-
-
-
-
-/*
-     Config File Setup Start
-  */
  
-inline bool LoadOffsets() {
-    if (g_encryptedOffsets.empty())
-        return false;
-    try {
-        std::string decrypted = aesDecrypt(g_encryptedOffsets, encryptionKey, ivStr);
-        json j = json::parse(decrypted);
-        if (!j.contains("LT_SHELL") || !j.contains("MYOFFSET") ||
-            !j.contains("dwCPlayerSize") || !j.contains("ILTDrawPrim") ||
-            !j.contains("dwCPlayerStart"))
-        {
-            return false;
-        }
-        LT_SHELL = std::stoull(j["LT_SHELL"].get<std::string>(), nullptr, 16);
-        offs::MYOFFSET = static_cast<int32_t>(std::stoull(j["MYOFFSET"].get<std::string>(), nullptr, 16));
-        offs::dwCPlayerSize = static_cast<int32_t>(std::stoull(j["dwCPlayerSize"].get<std::string>(), nullptr, 16));
-        offs::ILTDrawPrim = std::stoull(j["ILTDrawPrim"].get<std::string>(), nullptr, 16);
-        offs::dwCPlayerStart = std::stoull(j["dwCPlayerStart"].get<std::string>(), nullptr, 16);
-    }
-    catch (...) {
+inline bool PopulateOffsets() {
+    if (!mem.vHandle) {
+        LOG_ERROR2("Invalid Handle");
         return false;
     }
+
+    const auto cshell_size = mem.GetBaseSize(SHELLNAME);
+    const auto cbase_size = mem.GetBaseSize(GAME_NAME);
+
+
+    auto LogHex = [](const char* name, uintptr_t value) {
+        char buf[256];
+        sprintf_s(buf, "%s: 0x%llX", name, value);
+        LOG_INFO2(buf);
+        };
+
+    auto LogScan = [](const char* name, uintptr_t base, size_t size) {
+        char buf[256];
+        sprintf_s(buf, "Scanning %s at 0x%llX-0x%llX", name, base, base + size);
+        LOG_INFO2(buf);
+        };
+
+
+    LogHex("CFSHELL base", CFSHELL);
+    LogHex("CFSHELL size", cshell_size);
+    LogHex("CFBASE base", CFBASE);
+    LogHex("CFBASE size", cbase_size);
+
+    if (!CFSHELL || !cshell_size || !CFBASE || !cbase_size) {
+        LOG_ERROR("Invalid module bases");
+        return false;
+    }
+
+    const auto scan_in_range = [&](const char* name, const auto& pattern, uintptr_t base, size_t size) {
+        LogScan(name, base, size);
+        auto result = mem.FindSignature(pattern, base, base + size);
+        LogHex(name, result);
+        return result;
+        };
+
+    const auto first = scan_in_range("LT_PATTERN", offs::LT_PATTERN, CFSHELL, cshell_size);
+    const auto second = scan_in_range("MY_OFFSET_PATTERN", offs::MY_OFFSET_PATTERN, CFSHELL, cshell_size);
+    const auto third = scan_in_range("MY_PLAYERSIZE_PATTERN", offs::MY_PLAYERSIZE_PATTERN, CFSHELL, cshell_size);
+    const auto fourth = scan_in_range("DRAWPRIM_PATTERN", offs::DRAWPRIM_PATTERN, CFBASE, cbase_size);
+    const auto fifth = scan_in_range("PLAYER_START_PATTERN", offs::PLAYER_START_PATTERN, CFSHELL, cshell_size);
+
+    if (!first || !second || !third || !fourth || !fifth) {
+        LOG_ERROR("Signature scan failed. Missing patterns:");
+        if (!first) LOG_INFO2("- LT_PATTERN");
+        if (!second) LOG_INFO2("- MY_OFFSET_PATTERN");
+        if (!third) LOG_INFO2("- MY_PLAYERSIZE_PATTERN");
+        if (!fourth) LOG_INFO2("- DRAWPRIM_PATTERN");
+        if (!fifth) LOG_INFO2("- PLAYER_START_PATTERN");
+        return false;
+    }
+
+    const auto read_offset = [&](const char* name, auto addr) {
+        auto val = mem.Read<int32_t>(addr + 3);
+        LogHex(name, val);
+        return val;
+        };
+
+    offs::LT_SHELL = first + 7 + read_offset("LT_OFFSET", first);
+    offs::MYOFFSET = read_offset("MY_OFFSET", second);
+    offs::dwCPlayerSize = read_offset("PLAYER_SIZE", third);
+    offs::ILTDrawPrim = fourth + 7 + read_offset("DRAWPRIM_OFFSET", fourth);
+    offs::dwCPlayerStart = read_offset("PLAYER_START", fifth);
+    LOG_INFO("Final offsets:");
+    LogHex("LT_SHELL", offs::LT_SHELL);
+    LogHex("MYOFFSET", offs::MYOFFSET);
+    LogHex("dwCPlayerSize", offs::dwCPlayerSize);
+    LogHex("ILTDrawPrim", offs::ILTDrawPrim);
+    LogHex("dwCPlayerStart", offs::dwCPlayerStart);
+    if (offs::LT_SHELL > (CFSHELL + cshell_size)) {
+        LOG_ERROR("Invalid LT_SHELL outside module range");
+        return false;
+    }
+    
+    LOG_INFO("[X] Cheats not working? Restart your PC.\n");
+    
     return true;
 }
 
 
 
-inline void SaveOffsets() {
-    json j;
-    j["LT_SHELL"] = toHex(LT_SHELL);
-    j["MYOFFSET"] = toHex(static_cast<uintptr_t>(offs::MYOFFSET));
-    j["dwCPlayerSize"] = toHex(static_cast<uintptr_t>(offs::dwCPlayerSize));
-    j["ILTDrawPrim"] = toHex(offs::ILTDrawPrim);
-    j["dwCPlayerStart"] = toHex(offs::dwCPlayerStart);
-    std::stringstream ss;
-    ss << std::setw(4) << j;
-    std::string plainOffsets = ss.str();
-    try {
-        g_encryptedOffsets = aesEncrypt(plainOffsets, encryptionKey, ivStr);
-    }
-    catch (const std::exception& e) {
-         
-        g_encryptedOffsets.clear();
-    }
-}
 
-
-inline void ClearConfig() {
-    g_encryptedOffsets.clear();
-}
-
-
-
-
-inline void UpdateOffsets(Memory& mem) {
-   
-    static std::atomic<bool> isUpdating = false;
-
-    if (isUpdating.load()) {
-        LOG("[Offsets] Already updating...");
-        return;
-    }
-
-    isUpdating.store(true);
-
-    offsetThread = std::thread([&mem]() {
-        SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
-        update_status = "Updating Offsets...";
-
-        bool success = false;
-
-        do {
-            if (LoadOffsets()) {
-                success = true;
-                break;
-            }
-
-            size_t CSHELL_SIZE = mem.GetBaseSize("CShell_x64.dll");
-            size_t CFBASE_SIZE = mem.GetBaseSize("crossfire.exe");
-
-            if (!CFSHELL || CSHELL_SIZE == 0 || !CFBASE || CFBASE_SIZE == 0) {
-                update_status = "Update Failed";
-                success = false;
-                break;
-            }
-
-            
-            uintptr_t firstSigResult = mem.FindSignature(offs::LT_PATTERN, CFSHELL, CFSHELL + CSHELL_SIZE);
-            uintptr_t secondSigResult = mem.FindSignature(offs::MY_OFFSET_PATTERN, CFSHELL, CFSHELL + CSHELL_SIZE);
-            uintptr_t thirdSigResult = mem.FindSignature(offs::MY_PLAYERSIZE_PATTERN, CFSHELL, CFSHELL + CSHELL_SIZE);
-            uintptr_t fourthSigResult = mem.FindSignature(offs::DRAWPRIM_PATTERN, CFBASE, CFBASE + CFBASE_SIZE);
-
-            if (!firstSigResult || !secondSigResult || !thirdSigResult || !fourthSigResult) {
-                update_status = "Update Failed";
-                success = false;
-                break;
-            }
-
-            
-            int32_t offsetLT = mem.Read<int32_t>(firstSigResult + 3);
-            int32_t offsetMYOFFSET = mem.Read<int32_t>(secondSigResult + 3);
-            int32_t offsetPlayerSize = mem.Read<int32_t>(thirdSigResult + 3);
-            int32_t offsetDrawPrim = mem.Read<int32_t>(fourthSigResult + 3);
-
-           
-            LT_SHELL = firstSigResult + 7 + offsetLT;
-            offs::MYOFFSET = offsetMYOFFSET;
-            offs::dwCPlayerSize = offsetPlayerSize;
-            offs::ILTDrawPrim = fourthSigResult + 7 + offsetDrawPrim;
-
-            success = (LT_SHELL <= CFSHELL + CSHELL_SIZE);
-
-            if (success)
-                SaveOffsets();
-
-        } while (false);
-
-        update_status = success ? "Offsets Updated" : "Update Failed";
-
-        isUpdating.store(false);
-        });
-
-    
-    offsetThread.detach();
-}
-/*
-      offsets  Setup End
-
-    */
 

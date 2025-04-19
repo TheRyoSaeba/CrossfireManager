@@ -1,8 +1,20 @@
-#include "Config.h"
-#include"../Config/globals.h"
 #include "../ESP/ESP.h"
+#include "Config.h"
+#include"globals.h"
+#include <shlobj.h>             
+#include <filesystem>           
+#include <fstream>              
+#include <sstream>             
+#include <iomanip>            
+#include <cfloat>              
+namespace fs = std::filesystem;
+
+namespace fs = std::filesystem;
 
 
+using namespace KLASSES;
+
+ 
 void SaveColors(json& j) {
     j["g_EnemyColor"] = { g_EnemyColor.R, g_EnemyColor.G, g_EnemyColor.B, g_EnemyColor.A };
     j["g_AllyColor"] = { g_AllyColor.R, g_AllyColor.G, g_AllyColor.B, g_AllyColor.A };
@@ -38,15 +50,15 @@ std::string getCheatConfigDir() {
     char path[MAX_PATH];
     if (SUCCEEDED(SHGetFolderPathA(nullptr, CSIDL_PERSONAL, nullptr, 0, path))) {
         fs::path docPath(path);
-        docPath /= "Makimura";
-        docPath /= "configs";
+        docPath /= xorstr_("Makimura");
+        docPath /= xorstr_("configs");
         if (!fs::exists(docPath)) {
             fs::create_directories(docPath);
         }
         return docPath.string();
     }
 
-    fs::path fallback("configs");
+    fs::path fallback(xorstr_("configs"));
     if (!fs::exists(fallback))
         fs::create_directory(fallback);
     return fallback.string();
@@ -54,7 +66,7 @@ std::string getCheatConfigDir() {
 
  std::string getCheatConfigPath(const std::string& configName) {
     fs::path p = getCheatConfigDir();
-    p /= configName + ".json";
+    p /= configName + xorstr_(".json");
     return p.string();
 }
 
@@ -104,98 +116,40 @@ std::string toHex(uintptr_t value) {
     return ss.str();
 }
 
- std::string getConfigPath() {
-    char path[MAX_PATH];
-    if (SUCCEEDED(SHGetFolderPathA(nullptr, CSIDL_PERSONAL, nullptr, 0, path))) {
-        fs::path docPath(path);
-        docPath /= "Makimura";
-        if (!fs::exists(docPath)) {
-            fs::create_directory(docPath);
-        }
-        docPath /= "offsets.json";
-        return docPath.string();
-    }
-
-    return "offsets.json";
-}
+ 
  
 
-std::string aesEncrypt(const std::string& plaintext, const std::string& key, const std::string& iv) {
-    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    if (!ctx)
-        throw std::runtime_error("Failed to create context");
-
-    int ret = EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL,
-        reinterpret_cast<const unsigned char*>(key.data()),
-        reinterpret_cast<const unsigned char*>(iv.data()));
-    if (ret != 1) {
-        EVP_CIPHER_CTX_free(ctx);
-        throw std::runtime_error("EncryptInit failed");
-    }
-
-    std::vector<unsigned char> ciphertext(plaintext.size() + EVP_CIPHER_block_size(EVP_aes_256_cbc()));
-    int out_len1 = 0;
-    ret = EVP_EncryptUpdate(ctx, ciphertext.data(), &out_len1,
-        reinterpret_cast<const unsigned char*>(plaintext.data()),
-        static_cast<int>(plaintext.size()));
-    if (ret != 1) {
-        EVP_CIPHER_CTX_free(ctx);
-        throw std::runtime_error("EncryptUpdate failed");
-    }
-
-    int out_len2 = 0;
-    ret = EVP_EncryptFinal_ex(ctx, ciphertext.data() + out_len1, &out_len2);
-    if (ret != 1) {
-        EVP_CIPHER_CTX_free(ctx);
-        throw std::runtime_error("EncryptFinal failed");
-    }
-
-    EVP_CIPHER_CTX_free(ctx);
-    ciphertext.resize(out_len1 + out_len2);
-    return std::string(ciphertext.begin(), ciphertext.end());
-}
-
-
-std::string aesDecrypt(const std::string& ciphertext, const std::string& key, const std::string& iv) {
-    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    if (!ctx)
-        throw std::runtime_error("Failed to create context");
-
-    int ret = EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL,
-        reinterpret_cast<const unsigned char*>(key.data()),
-        reinterpret_cast<const unsigned char*>(iv.data()));
-    if (ret != 1) {
-        EVP_CIPHER_CTX_free(ctx);
-        throw std::runtime_error("DecryptInit failed");
-    }
-
-    std::vector<unsigned char> plaintext(ciphertext.size());
-    int out_len1 = 0;
-    ret = EVP_DecryptUpdate(ctx, plaintext.data(), &out_len1,
-        reinterpret_cast<const unsigned char*>(ciphertext.data()),
-        static_cast<int>(ciphertext.size()));
-    if (ret != 1) {
-        EVP_CIPHER_CTX_free(ctx);
-        throw std::runtime_error("DecryptUpdate failed");
-    }
-
-    int out_len2 = 0;
-    ret = EVP_DecryptFinal_ex(ctx, plaintext.data() + out_len1, &out_len2);
-    if (ret != 1) {
-        EVP_CIPHER_CTX_free(ctx);
-        throw std::runtime_error("DecryptFinal failed");
-    }
-
-    EVP_CIPHER_CTX_free(ctx);
-    plaintext.resize(out_len1 + out_len2);
-    return std::string(plaintext.begin(), plaintext.end());
-}
  json SerializeCheatConfig() {
     json j;
+    j["color"] = { color[0], color[1], color[2], color[3] };
+    j["memwrite"] = memwrite;
+    j["draw_radar"] = draw_radar;
+    j["draw_enemies_as_arrows"] = draw_enemies_as_arrows;
+    j["draw_enemy_names"] = draw_enemy_names;
+    j["radar_size_factor"] = radar_size_factor;
+    j["radar_elev_threshold"] = radar_elev_threshold;
+    j["radar_bg_alpha"] = radar_bg_alpha;
+    j["radarRadius"] = radarRadius;
+    j["perWeaponConfig"] = perWeaponConfig;
+    j["radarMaxDistance"] = radarMaxDistance;
+    j["radar_opacity"] = radar_opacity;
+    j["radar_zoom"] = radar_zoom;
+    j["camera_hacks"] = camera_hacks;
+    j["fast_knives"] = fast_knives;
+    j["showhidekey"] = showhidekey;
     j["Dcheckbox"] = Dcheckbox;
     j["enableAimbot"] = enableAimbot;
     j["AimFov"] = AimFov;
+    j["smoothing"] = smoothing;
+    j["aimkey"] = aimkey;
+    j["keymode"] = keymode;
+    j["MemoryMode"] = MemoryMode;
+    j["ToggleorHold"] = ToggleorHold;
+    j["showFOVCircle"] = showFOVCircle;
     j["AimSpeed"] = AimSpeed;
+    j["selectedAimDevice"] = selectedAimDevice;
+    j["AimPosition"] = AimPosition;
+    j["TargetSwitch"] = TargetSwitch;
     j["MaxAimDistance"] = MaxAimDistance;
     j["firstHotkey"] = firstHotkey;
     j["Headcheckbox"] = Headcheckbox;
@@ -217,6 +171,35 @@ std::string aesDecrypt(const std::string& ciphertext, const std::string& key, co
     j["bonetk"] = bonetk;
     j["crosshair_notify"] = crosshair_notify;
 
+
+    json weaponConfigsJson;
+    
+    for (int w = (int)WeaponType::Pistol; w <= (int)WeaponType::RAPPEL; ++w)
+    {
+        WeaponType wType = (WeaponType)w;
+      
+        const auto& cfg = g_weaponAimbotConfigs[wType];
+
+       
+        json weaponObj;
+        weaponObj["enableAimbot"] = cfg.enableAimbot;
+        weaponObj["AimFov"] = cfg.AimFov;
+        weaponObj["MemoryMode"] = cfg.MemoryMode;
+        weaponObj["ToggleorHold"] = cfg.ToggleorHold;
+        weaponObj["AimSpeed"] = cfg.AimSpeed;
+        weaponObj["aimkey"] = cfg.aimkey;
+        weaponObj["keymode"] = cfg.keymode;
+        weaponObj["smoothing"] = cfg.smoothing;
+        weaponObj["selectedAimDevice"] = cfg.selectedAimDevice;
+        weaponObj["AimPosition"] = cfg.AimPosition;
+        weaponObj["TargetSwitch"] = cfg.TargetSwitch;
+        weaponObj["MaxAimDistance"] = cfg.MaxAimDistance;
+       
+
+        weaponConfigsJson[std::to_string(w)] = weaponObj;
+    }
+    j["weaponAimbotConfigs"] = weaponConfigsJson;
+
     SaveColors(j);
 
     {
@@ -226,18 +209,45 @@ std::string aesDecrypt(const std::string& ciphertext, const std::string& key, co
 
     return j;
 }
-
+ 
   void DeserializeCheatConfig(const json& j) {
+
+    showhidekey = j.value("showhidekey", showhidekey);
+    memwrite = j.value("memwrite", memwrite);
     Dcheckbox = j.value("Dcheckbox", Dcheckbox);
     enableAimbot = j.value("enableAimbot", enableAimbot);
     AimFov = j.value("AimFov", AimFov);
+    aimkey = j.value("aimkey", aimkey);
+    keymode = j.value("keymode", keymode);
+    showFOVCircle = j.value("showFOVCircle", showFOVCircle);
+    MemoryMode = j.value("MemoryMode", MemoryMode);
     AimSpeed = j.value("AimSpeed", AimSpeed);
+    smoothing = j.value("smoothing", smoothing);
+    smoothing = std::clamp(smoothing, 1, 10);
+    perWeaponConfig = j.value("perWeaponConfig", perWeaponConfig);
+    AimSpeed = std::clamp(AimSpeed, 0.01f, 0.1f);
+    AimPosition = j.value("AimPosition", AimPosition);
     MaxAimDistance = j.value("MaxAimDistance", MaxAimDistance);
+    MaxAimDistance = std::clamp(MaxAimDistance, 0.0f, 1000.0f);
     firstHotkey = j.value("firstHotkey", firstHotkey);
+    selectedAimDevice = j.value("selectedAimDevice", selectedAimDevice);
+    TargetSwitch = j.value("TargetSwitch", TargetSwitch);
+    ToggleorHold = j.value("ToggleorHold", ToggleorHold);
     Headcheckbox = j.value("Headcheckbox", Headcheckbox);
     Healthcheckbox = j.value("Healthcheckbox", Healthcheckbox);
     showInfoText = j.value("showInfoText", showInfoText);
     draw_radar = j.value("draw_radar", draw_radar);
+    draw_enemies_as_arrows = j.value("draw_enemies_as_arrows", draw_enemies_as_arrows);
+    draw_enemy_names = j.value("draw_enemy_names", draw_enemy_names);
+    radar_size_factor = j.value("radar_size_factor", radar_size_factor);
+    radar_elev_threshold = j.value("radar_elev_threshold", radar_elev_threshold);
+    radar_bg_alpha = j.value("radar_bg_alpha", radar_bg_alpha);
+    radarRadius = j.value("radarRadius", radarRadius);
+    radarMaxDistance = j.value("radarMaxDistance", radarMaxDistance);
+    radar_opacity = j.value("radar_opacity", radar_opacity);
+    radar_zoom = j.value("radar_zoom", radar_zoom);
+    camera_hacks = j.value("camera_hacks", camera_hacks);
+    fast_knives = j.value("fast_knives", fast_knives);
     Namecheckbox = j.value("Namecheckbox", Namecheckbox);
     Distancecheckbox = j.value("Distancecheckbox", Distancecheckbox);
     weaponcheckbox = j.value("weaponcheckbox", weaponcheckbox);
@@ -253,6 +263,49 @@ std::string aesDecrypt(const std::string& ciphertext, const std::string& key, co
     hdtk = std::clamp(hdtk, 0.0f, 10.0f);
     bonetk = j.value("bonetk", bonetk);
     crosshair_notify = j.value("crosshair_notify", crosshair_notify);
+    if (j.contains("weaponAimbotConfigs"))
+    {
+        auto wpnConfigObj = j["weaponAimbotConfigs"];
+        if (wpnConfigObj.is_object())
+        {
+            
+            for (auto& [key, value] : wpnConfigObj.items())
+            {
+               
+                int weaponId = std::stoi(key);
+                
+                if (weaponId < (int)WeaponType::Pistol || weaponId >(int)WeaponType::RAPPEL)
+                    continue;
+                WeaponType wType = (WeaponType)weaponId;
+                auto& cfg = g_weaponAimbotConfigs[wType];
+                cfg.enableAimbot = value.value<bool>("enableAimbot", cfg.enableAimbot);
+                cfg.AimFov = value.value<float>("AimFov", cfg.AimFov);
+                cfg.aimkey = value.value<float>("aimkey", cfg.aimkey);
+                cfg.smoothing = value.value<float>("smoothing", cfg.smoothing);
+                cfg.keymode = value.value<float>("keymode", cfg.keymode);
+                cfg.MemoryMode = value.value<int>("MemoryMode", cfg.MemoryMode);
+                cfg.ToggleorHold = value.value<int>("ToggleorHold", cfg.ToggleorHold);
+                cfg.AimSpeed = value.value<float>("AimSpeed", cfg.AimSpeed);
+                cfg.selectedAimDevice = value.value<int>("selectedAimDevice", cfg.selectedAimDevice);
+                cfg.AimPosition = value.value<int>("AimPosition", cfg.AimPosition);
+                cfg.TargetSwitch = value.value<int>("TargetSwitch", cfg.TargetSwitch);
+                cfg.MaxAimDistance = value.value<float>("MaxAimDistance", cfg.MaxAimDistance);
+                cfg.firstHotkey = value.value<int>("firstHotkey", cfg.firstHotkey);
+
+            }
+        }
+    }
+    if (j.contains("color"))
+    {
+        auto arr = j["color"];
+        if (arr.size() == 4)
+        {
+            color[0] = arr[0];
+            color[1] = arr[1];
+            color[2] = arr[2];
+            color[3] = arr[3];
+        }
+    }
 
     LoadColors(j);
 

@@ -1,0 +1,7 @@
+// Hint files help the Visual Studio IDE interpret Visual C++ identifiers
+// such as names of functions and macros.
+// For more information see https://go.microsoft.com/fwlink/?linkid=865984
+#define DEFINE_MEMBER_N(o, t, n)
+#define DEFINE_MEMBER_N(o, t, n) struct { unsigned char MAKE_PAD(o); t n; }
+#define DEFINE_MEMBER_0(t, n)
+#define DEFINE_MEMBER_0(t, n) struct { t n; }

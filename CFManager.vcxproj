@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{09a73db9-fd88-4964-b2bb-434f2bd4d22f}</ProjectGuid>
+    <RootNamespace>CFManager</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>.\Output</OutDir>
+    <IntDir>.\Build</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>.\Output</OutDir>
+    <IntDir>.\Build</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>.\Output</OutDir>
+    <IntDir>.\Build</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>.\Output</OutDir>
+    <IntDir>.\Build</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Users\askmo\source\repos\Crossfire-Manager\freetype\include;C:\Users\askmo\source\repos\Crossfire-Manager\freetype\win64;C:\Users\askmo\source\repos\Crossfire-Manager\CFManager\UI\imgui\misc;C:\Users\askmo\source\repos\Crossfire-Manager\CFManager\UI\imgui\backends;C:\Users\askmo\source\repos\Crossfire-Manager\CFManager\UI\imgui;C:\Users\askmo\source\repos\Crossfire-Manager\Include;C:\Users\askmo\source\repos\Crossfire-Manager\CFManager\UI;C:\Users\askmo\source\repos\Crossfire-Manager\libs;C:\Users\askmo\source\repos\Crossfire-Manager\Memory;C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdclatest</LanguageStandard_C>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d11.lib;d3dx11.lib;d3dcompiler.lib;dxgi.lib;freetype.lib;leechcore.lib;vmm.lib;FTD3XX.lib;MYKMBOX.lib;library_x64.lib;VMProtectSDK64.lib;libcrypto.lib;libcrypto_static.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Users\askmo\source\repos\Crossfire-Manager\freetype\win64;C:\Users\askmo\source\repos\Crossfire-Manager\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Users\askmo\source\repos\Crossfire-Manager\freetype\include;C:\Users\askmo\source\repos\Crossfire-Manager\freetype\win64;C:\Users\askmo\source\repos\Crossfire-Manager\CFManager\UI\imgui\misc;C:\Users\askmo\source\repos\Crossfire-Manager\CFManager\UI\imgui\backends;C:\Users\askmo\source\repos\Crossfire-Manager\CFManager\UI\imgui;C:\Users\askmo\source\repos\Crossfire-Manager\Include;C:\Users\askmo\source\repos\Crossfire-Manager\CFManager\UI;C:\Users\askmo\source\repos\Crossfire-Manager\libs;C:\Users\askmo\source\repos\Crossfire-Manager\Memory;C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdclatest</LanguageStandard_C>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d11.lib;d3dx11.lib;d3dcompiler.lib;dxgi.lib;freetype.lib;leechcore.lib;vmm.lib;FTD3XX.lib;MYKMBOX.lib;library_x64.lib;VMProtectSDK64.lib;libcrypto.lib;libcrypto_static.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Users\askmo\source\repos\Crossfire-Manager\freetype\win64;C:\Users\askmo\source\repos\Crossfire-Manager\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Users\askmo\source\repos\Crossfire-Manager\freetype\include;C:\Users\askmo\source\repos\Crossfire-Manager\freetype\win64;C:\Users\askmo\source\repos\Crossfire-Manager\CFManager\UI\imgui\misc;C:\Users\askmo\source\repos\Crossfire-Manager\CFManager\UI\imgui\backends;C:\Users\askmo\source\repos\Crossfire-Manager\CFManager\UI\imgui;C:\Users\askmo\source\repos\Crossfire-Manager\Include;C:\Users\askmo\source\repos\Crossfire-Manager\CFManager\UI;C:\Users\askmo\source\repos\Crossfire-Manager\libs;C:\Users\askmo\source\repos\Crossfire-Manager\Memory;C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdclatest</LanguageStandard_C>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d11.lib;d3dx11.lib;d3dcompiler.lib;dxgi.lib;freetype.lib;leechcore.lib;vmm.lib;FTD3XX.lib;MYKMBOX.lib;library_x64.lib;VMProtectSDK64.lib;libcrypto.lib;libcrypto_static.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Users\askmo\source\repos\Crossfire-Manager\freetype\win64;C:\Users\askmo\source\repos\Crossfire-Manager\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Users\askmo\source\repos\Crossfire-Manager\freetype\include;C:\Users\askmo\source\repos\Crossfire-Manager\freetype\win64;C:\Users\askmo\source\repos\Crossfire-Manager\CFManager\UI\imgui\misc;C:\Users\askmo\source\repos\Crossfire-Manager\CFManager\UI\imgui\backends;C:\Users\askmo\source\repos\Crossfire-Manager\CFManager\UI\imgui;C:\Users\askmo\source\repos\Crossfire-Manager\Include;C:\Users\askmo\source\repos\Crossfire-Manager\CFManager\UI;C:\Users\askmo\source\repos\Crossfire-Manager\libs;C:\Users\askmo\source\repos\Crossfire-Manager\Memory;C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdclatest</LanguageStandard_C>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d11.lib;d3dx11.lib;d3dcompiler.lib;dxgi.lib;freetype.lib;leechcore.lib;vmm.lib;FTD3XX.lib;MYKMBOX.lib;library_x64.lib;VMProtectSDK64.lib;libcrypto.lib;libcrypto_static.lib;libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Users\askmo\source\repos\Crossfire-Manager\freetype\win64;C:\Users\askmo\source\repos\Crossfire-Manager\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="CFManager\Aimbot\AimHelper.cpp" />
+    <ClCompile Include="CFManager\Authentication\Auth.cpp" />
+    <ClCompile Include="CFManager\CFManager.cpp" />
+    <ClCompile Include="CFManager\Config\config.cpp" />
+    <ClCompile Include="CFManager\Config\globals.cpp" />
+    <ClCompile Include="CFManager\ESP\ESP.cpp" />
+    <ClCompile Include="CFManager\ESP\Radar.cpp" />
+    <ClCompile Include="CFManager\Misc\Misc.cpp" />
+    <ClCompile Include="CFManager\UI\imgui\backends\imgui_impl_dx11.cpp" />
+    <ClCompile Include="CFManager\UI\imgui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="CFManager\UI\imgui\imgui.cpp" />
+    <ClCompile Include="CFManager\UI\imgui\imgui_draw.cpp" />
+    <ClCompile Include="CFManager\UI\imgui\imgui_freetype.cpp" />
+    <ClCompile Include="CFManager\UI\imgui\imgui_knobs.cpp" />
+    <ClCompile Include="CFManager\UI\imgui\imgui_tables.cpp" />
+    <ClCompile Include="CFManager\UI\imgui\imgui_toggle.cpp" />
+    <ClCompile Include="CFManager\UI\imgui\imgui_toggle_palette.cpp" />
+    <ClCompile Include="CFManager\UI\imgui\imgui_toggle_presets.cpp" />
+    <ClCompile Include="CFManager\UI\imgui\imgui_toggle_renderer.cpp" />
+    <ClCompile Include="CFManager\UI\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="CFManager\UI\imgui\misc\freetype\imgui_freetype.cpp" />
+    <ClCompile Include="CFManager\UI\Logging.cpp" />
+    <ClCompile Include="CFManager\UI\render.cpp" />
+    <ClCompile Include="CFManager\UI\menu.cpp" />
+    <ClCompile Include="Memory\InputManager.cpp" />
+    <ClCompile Include="Memory\Memory.cpp" />
+    <ClCompile Include="Memory\my_enc.cpp" />
+    <ClCompile Include="Memory\pch.cpp" />
+    <ClCompile Include="Memory\Registry.cpp" />
+    <ClCompile Include="Memory\Shellcode.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Authentication\xorstr.hpp" />
+    <ClInclude Include="CFManager\Aimbot\AimHelper.h" />
+    <ClInclude Include="CFManager\Authentication\auth.hpp" />
+    <ClInclude Include="CFManager\Cache\Cache.h" />
+    <ClInclude Include="CFManager\Cache\CacheManager.h" />
+    <ClInclude Include="CFManager\CFManager.h" />
+    <ClInclude Include="CFManager\Authentication\xorstr.hpp" />
+    <ClInclude Include="CFManager\Classes.h" />
+    <ClInclude Include="CFManager\cn_classes.h" />
+    <ClInclude Include="CFManager\cn_offsets.h" />
+    <ClInclude Include="CFManager\Config\config.h" />
+    <ClInclude Include="CFManager\Config\globals.h" />
+    <ClInclude Include="CFManager\Config\json.hpp" />
+    <ClInclude Include="CFManager\ESP\ESP.h" />
+    <ClInclude Include="CFManager\Misc\Misc.h" />
+    <ClInclude Include="CFManager\offsets.h" />
+    <ClInclude Include="CFManager\region_header.h" />
+    <ClInclude Include="CFManager\UI\font.h" />
+    <ClInclude Include="CFManager\UI\image.h" />
+    <ClInclude Include="CFManager\UI\imgui\backends\imgui_impl_dx11.h" />
+    <ClInclude Include="CFManager\UI\imgui\backends\imgui_impl_win32.h" />
+    <ClInclude Include="CFManager\UI\imgui\D3DX11.h" />
+    <ClInclude Include="CFManager\UI\imgui\D3DX11tex.h" />
+    <ClInclude Include="CFManager\UI\imgui\imconfig.h" />
+    <ClInclude Include="CFManager\UI\imgui\imgui.h" />
+    <ClInclude Include="CFManager\UI\imgui\imgui_elements.h" />
+    <ClInclude Include="CFManager\UI\imgui\imgui_freetype.h" />
+    <ClInclude Include="CFManager\UI\imgui\imgui_internal.h" />
+    <ClInclude Include="CFManager\UI\imgui\imgui_knobs.h" />
+    <ClInclude Include="CFManager\UI\imgui\imgui_offset_rect.h" />
+    <ClInclude Include="CFManager\UI\imgui\imgui_settings.h" />
+    <ClInclude Include="CFManager\UI\imgui\imgui_toggle.h" />
+    <ClInclude Include="CFManager\UI\imgui\imgui_toggle_math.h" />
+    <ClInclude Include="CFManager\UI\imgui\imgui_toggle_palette.h" />
+    <ClInclude Include="CFManager\UI\imgui\imgui_toggle_presets.h" />
+    <ClInclude Include="CFManager\UI\imgui\imgui_toggle_renderer.h" />
+    <ClInclude Include="CFManager\UI\imgui\imstb_rectpack.h" />
+    <ClInclude Include="CFManager\UI\imgui\imstb_textedit.h" />
+    <ClInclude Include="CFManager\UI\imgui\imstb_truetype.h" />
+    <ClInclude Include="CFManager\UI\imgui\misc\freetype\imgui_freetype.h" />
+    <ClInclude Include="CFManager\UI\Logging.h" />
+    <ClInclude Include="CFManager\UI\render.h" />
+    <ClInclude Include="CFManager\UI\notify.h" />
+    <ClInclude Include="imgui\backends\imgui_impl_dx11.h" />
+    <ClInclude Include="imgui\backends\imgui_impl_win32.h" />
+    <ClInclude Include="imgui\D3DX11.h" />
+    <ClInclude Include="imgui\D3DX11tex.h" />
+    <ClInclude Include="imgui\imconfig.h" />
+    <ClInclude Include="imgui\imgui.h" />
+    <ClInclude Include="imgui\imgui_elements.h" />
+    <ClInclude Include="imgui\imgui_freetype.h" />
+    <ClInclude Include="imgui\imgui_internal.h" />
+    <ClInclude Include="imgui\imgui_knobs.h" />
+    <ClInclude Include="imgui\imgui_offset_rect.h" />
+    <ClInclude Include="imgui\imgui_settings.h" />
+    <ClInclude Include="imgui\imgui_toggle.h" />
+    <ClInclude Include="imgui\imgui_toggle_math.h" />
+    <ClInclude Include="imgui\imgui_toggle_palette.h" />
+    <ClInclude Include="imgui\imgui_toggle_presets.h" />
+    <ClInclude Include="imgui\imgui_toggle_renderer.h" />
+    <ClInclude Include="imgui\imstb_rectpack.h" />
+    <ClInclude Include="imgui\imstb_textedit.h" />
+    <ClInclude Include="imgui\imstb_truetype.h" />
+    <ClInclude Include="imgui\misc\freetype\imgui_freetype.h" />
+    <ClInclude Include="Memory\consts.h" />
+    <ClInclude Include="Memory\HidTable.h" />
+    <ClInclude Include="Memory\InputManager.h" />
+    <ClInclude Include="Memory\KMBOX.h" />
+    <ClInclude Include="Memory\kmnetlogo.h" />
+    <ClInclude Include="Memory\Memory.h" />
+    <ClInclude Include="Memory\my_enc.h" />
+    <ClInclude Include="Memory\Registry.h" />
+    <ClInclude Include="Memory\Shellcode.h" />
+    <ClInclude Include="Memory\structs.h" />
+    <ClInclude Include="Memory\window.h" />
+    <ClInclude Include="Memory\xorstr.hpp" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="UI\Logging.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="CFManager.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

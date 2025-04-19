@@ -334,7 +334,12 @@ __pycache__/
 
 # OpenCover UI analysis results
 OpenCover/
-
+////output
+Crossfire-Manager\CFManager\Authentication
+Crossfire-Manager\\Output
+Crossfire-Manager\CFManager\cn_classes.h
+Crossfire-Manager\CFManager\cn_offsets.h
+Crossfire-Manager\\Output
 # Azure Stream Analytics local run output
 ASALocalRun/
 

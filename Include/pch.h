@@ -20,7 +20,12 @@
 
 #define DEBUG_INFO
 #ifdef DEBUG_INFO
-#define LOG(fmt, ...) std::printf(fmt, ##__VA_ARGS__)
+#define LOG(fmt, ...)           \
+    do {                        \
+        std::printf(fmt, ##__VA_ARGS__); \
+        std::fflush(stdout);    \
+    } while (0)
+
 #define LOGW(fmt, ...) std::wprintf(fmt, ##__VA_ARGS__)
 #else
 #define LOG

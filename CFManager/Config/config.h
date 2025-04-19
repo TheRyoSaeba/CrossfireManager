@@ -1,10 +1,10 @@
 #pragma once
 
 #include <nlohmann/json.hpp>
-
 using json = nlohmann::json;
 
 static std::string g_encryptedOffsets;
+
 
 void SaveColors(json& j);
 void LoadColors(const json& j);

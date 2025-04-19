@@ -1,20 +1,20 @@
-#pragma once
+﻿#pragma once
+#define NOMINMAX
 
-#include "../Config/config.h"
-#include "../CFManager/Classes.h"
+#include "../region_header.h"
 #include "Memory.h"
-#include "../CFManager/offsets.h"
 #include <array>
 #include <vector>
 #include <mutex>
 #include <chrono>
 #include <d3dx9math.h>
 #include <cstddef>
+#include <unordered_map>
  
 constexpr size_t NUM_BONES = 19;
 namespace ESP {
 
-    
+
 
     struct MinimalPlayerData {
         void* hObject;
@@ -24,10 +24,9 @@ namespace ESP {
         D3DXVECTOR3 HeadPos;
         D3DXVECTOR3 FootPos;
         D3DXVECTOR3 AbsPos;
-        
         bool IsDead;
         std::array<D3DXVECTOR3, NUM_BONES> bones;
-        
+
     };
 
 
@@ -38,10 +37,12 @@ namespace ESP {
         float localYaw;
         float localPitch;
         uintptr_t local_angles;
-        int localTeam;  
+        int localTeam;
         KLASSES::LT_DRAWPRIM drawPrim;
         KLASSES::LTClientShell m_clientShell;
+        KLASSES::pPlayer LocalPlayer;
         std::vector<MinimalPlayerData> enemies;
+       
     };
 
     class Cache {
@@ -56,17 +57,18 @@ namespace ESP {
         }
 
         bool Update(Memory& mem) {
-            
+
 
             if (!ClientUpdate(mem))
                 return false;
 
-            
-           if (!UpdateLocalPlayer2(mem)) return false;
-             
+
+            if (!UpdateLocalPlayer2(mem)) return false;
+
 
 
             UpdateEntities(mem);
+                
 
 
             if (!UpdatePositions(mem))
@@ -87,7 +89,8 @@ namespace ESP {
             snap.localTeam = m_localPlayer.Team;
             snap.local_angles = m_viewangles;
             snap.drawPrim = mem.Read<KLASSES::LT_DRAWPRIM>(offs::ILTDrawPrim);
-            snap.m_clientShell = mem.Read<KLASSES::LTClientShell>(LT_SHELL);
+            snap.m_clientShell = m_clientShell;
+            snap.LocalPlayer = m_localPlayer;
             snap.enemies = m_minimalPlayers;
             return snap;
         }
@@ -116,7 +119,7 @@ namespace ESP {
     private:
 
         std::chrono::steady_clock::time_point m_lastEntityUpdate;
-        static constexpr std::chrono::milliseconds ENTITY_UPDATE_INTERVAL{ 900 };
+        static constexpr std::chrono::milliseconds ENTITY_UPDATE_INTERVAL{ 200 };
         KLASSES::LTClientShell m_clientShell;
         KLASSES::pPlayer m_localPlayer;
         D3DXVECTOR3 m_localAbsolutePosition;
@@ -139,7 +142,8 @@ namespace ESP {
         VMMDLL_SCATTER_HANDLE m_scatterHandle;
 
         bool ClientUpdate(Memory& mem) {
-            if (!mem.Read(LT_SHELL, &m_clientShell, sizeof(KLASSES::LTClientShell)))
+            if (!mem.Read(offs::LT_SHELL, &m_clientShell, sizeof(KLASSES::LTClientShell)))
+                
                 return false;
             return true;
         }
@@ -154,18 +158,18 @@ namespace ESP {
                 uintptr_t clntBaseAddr = reinterpret_cast<uintptr_t>(m_clientShell.CPlayerClntBase);
                 m_viewangles = clntBaseAddr + offsetof(KLASSES::pPlayerClntBase, ViewAngles);
 
-                
+
                 mem.AddScatterReadRequest(m_scatterHandle,
                     playerAddr + offsetof(KLASSES::obj, AbsolutePosition),
                     &m_localAbsolutePosition, sizeof(D3DXVECTOR3));
 
-                
+
                 uint32_t boneArrayPtr = 0;
                 mem.AddScatterReadRequest(m_scatterHandle,
                     playerAddr + offsetof(KLASSES::obj, BoneArray),
                     &boneArrayPtr, sizeof(uint32_t));
 
-                 
+
                 mem.AddScatterReadRequest(m_scatterHandle,
                     characFXAddr + offsetof(KLASSES::pCharacterFx, isDead),
                     &m_localIsDead, sizeof(bool));
@@ -176,19 +180,19 @@ namespace ESP {
                     clntBaseAddr + offsetof(KLASSES::pPlayerClntBase, Pitch),
                     &m_localPitch, sizeof(float));
 
-              
+
                 mem.ExecuteReadScatter(m_scatterHandle);
 
-                
+
                 if (boneArrayPtr != 0) {
                     D3DXMATRIX headBoneMatrix;
-                     
+
                     uintptr_t headBoneAddr = boneArrayPtr + (6 * sizeof(D3DXMATRIX));
                     mem.AddScatterReadRequest(m_scatterHandle,
                         headBoneAddr, &headBoneMatrix, sizeof(D3DXMATRIX));
                     mem.ExecuteReadScatter(m_scatterHandle);
 
-                   
+
                     m_localHeadPosition = D3DXVECTOR3(
                         headBoneMatrix._14,
                         headBoneMatrix._24,
@@ -196,7 +200,7 @@ namespace ESP {
                     );
                 }
                 else {
-                    // Fallback if bone pointer is invalid.
+
                     m_localHeadPosition = { 0.0f, 0.0f, 0.0f };
                 }
                 return true;
@@ -207,9 +211,9 @@ namespace ESP {
 
 
 
-            int localIdx = mem.Read<int>((uintptr_t)LT_SHELL + offs::MYOFFSET);
+            int localIdx = mem.Read<int>((uintptr_t)offs::LT_SHELL + offs::MYOFFSET);
 
-            uintptr_t localPlayerAddr = LT_SHELL + offs::dwCPlayerStart + (localIdx * sizeof(offs::dwCPlayerSize));
+            uintptr_t localPlayerAddr = offs::LT_SHELL + offs::dwCPlayerStart + (localIdx * sizeof(offs::dwCPlayerSize));
 
 
             if (!m_scatterHandle) {
@@ -236,6 +240,7 @@ namespace ESP {
             uintptr_t characFXAddr = reinterpret_cast<uintptr_t>(m_localPlayer.characFX);
             uintptr_t clntBaseAddr = reinterpret_cast<uintptr_t>(m_clientShell.CPlayerClntBase);
 
+
             mem.AddScatterReadRequest(m_scatterHandle, playerAddr + offsetof(KLASSES::obj, AbsolutePosition), &m_localAbsolutePosition, sizeof(D3DXVECTOR3));
             mem.AddScatterReadRequest(m_scatterHandle, playerAddr + offsetof(KLASSES::obj, Head), &m_localHeadPosition, sizeof(D3DXVECTOR3));
             mem.AddScatterReadRequest(m_scatterHandle, characFXAddr + offsetof(KLASSES::pCharacterFx, isDead), &m_localIsDead, sizeof(bool));
@@ -249,8 +254,12 @@ namespace ESP {
         }
 
 
-
-        void UpdateEntities(Memory& mem) {
+        /// <summary>
+        /// Make sure pplayer padding matches dwcplayersize if not usn..raw
+        /// </summary>
+        /// <param name="mem"></param>
+        void UpdateEntities(Memory& mem)
+        {
             const auto now = std::chrono::steady_clock::now();
             if ((now - m_lastEntityUpdate < ENTITY_UPDATE_INTERVAL) ||
                 m_entityUpdateInProgress.load()) {
@@ -259,70 +268,72 @@ namespace ESP {
 
             m_entityUpdateInProgress.store(true);
             m_lastEntityUpdate = now;
+
             const auto startTime = std::chrono::steady_clock::now();
-            std::thread([this, &mem, startTime]() {
-                const int inactiveBuffer = 1 - m_activeBuffer.load();
-                auto& targetBuffer = m_players[inactiveBuffer];
 
-                const uintptr_t ENTITY_BASE = LT_SHELL + offs::dwCPlayerStart;
-                const bool bulkSuccess = mem.Read(
-                    ENTITY_BASE,
-                    targetBuffer.data(),
-                    offs::dwCPlayerSize * MAX_PLAYERS
+            const int inactiveBuffer = 1 - m_activeBuffer.load();
+            auto& targetBuffer = m_players[inactiveBuffer];
 
-                );
-                 
-                   
-                if (!bulkSuccess) {
-                    for (int i = 0; i < MAX_PLAYERS; ++i) {
-                        targetBuffer[i] = m_clientShell.GetPlayerByIndex(i);
-                    }
+            const uintptr_t ENTITY_BASE = offs::LT_SHELL + offs::dwCPlayerStart;
+            const size_t entrySize = offs::dwCPlayerSize;
+            const size_t totalSize = entrySize * MAX_PLAYERS;
+
+           
+            std::vector<std::byte> rawBuffer(totalSize);
+
+            bool bulkSuccess = mem.Read(ENTITY_BASE, rawBuffer.data(), totalSize);
+
+            if (bulkSuccess)
+            {
+               
+                for (int i = 0; i < MAX_PLAYERS; ++i)
+                {
+                    std::byte* src = rawBuffer.data() + (i * entrySize);
+                    memcpy(&targetBuffer[i], src, std::min(sizeof(KLASSES::pPlayer), entrySize));
                 }
 
-                uint32_t newChecksum = 0;
+                m_activeBuffer.store(inactiveBuffer);
+               // LOG("[UpdateEntities] Bulk read and decode successful. Swapped buffers.\n");
+            }
+            else
+            {
+                //OG("[UpdateEntities] Bulk read failed! Falling back to GetPlayerByIndex.\n");
 
-                for (const auto& player : targetBuffer) {
-                    for (size_t j = 0; j < sizeof(player.Name); ++j) {
-                        newChecksum = (newChecksum << 5) - newChecksum + static_cast<uint8_t>(player.Name[j] + static_cast<int>(player.Health) + player.Spectator +  player.ClientID);
-                    }
-
+                for (int i = 0; i < MAX_PLAYERS; ++i)
+                {
+                    targetBuffer[i] = m_clientShell.GetPlayerByIndex(i);
                 }
 
+                m_activeBuffer.store(inactiveBuffer);
+                LOG("[UpdateEntities] Fallback update complete. Swapped buffers.\n");
+            }
 
-                const auto endTime = std::chrono::steady_clock::now();
-                const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-                // LOG("[UpdateEntities] Time taken: %lld ms\n", duration.count());
-                if (newChecksum != m_lastChecksum) {
-                    m_activeBuffer.store(inactiveBuffer);
-                    m_lastChecksum = newChecksum;
-                    //  LOG("[UpdateEntities] Player list changed. Swapping buffers.\n");
-                }
-                else {
+            const auto endTime = std::chrono::steady_clock::now();
+            const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+            //LOG("[UpdateEntities] Time taken: %lld ms\n", duration.count());
 
-                    //LOG("[UpdateEntities] No changes detected. Skipping swap.\n");
-                }
-
-                m_entityUpdateInProgress.store(false);
-                }).detach();
+            m_entityUpdateInProgress.store(false);
         }
 
-       
+
+
+
         bool UpdatePositions(Memory& mem) {
             std::array<D3DXVECTOR3, MAX_PLAYERS> tempHeadPositions;
             std::array<D3DXVECTOR3, MAX_PLAYERS> tempFootPositions;
             std::array<D3DXVECTOR3, MAX_PLAYERS> tempAbsolutePositions;
             std::array<int8_t, MAX_PLAYERS> tempIsDeadFlags{};
             std::array<uintptr_t, MAX_PLAYERS> tempBoneArrayAddresses{};
-            
+
             std::array<D3DXMATRIX, MAX_PLAYERS> tempHeadBoneMatrices{};
 
-          
+
             std::array<std::array<D3DXVECTOR3, NUM_BONES>, MAX_PLAYERS> tempExtraBones;
 
             const int activeBuffer = m_activeBuffer.load();
             const auto& currentPlayers = m_players[activeBuffer];
 
-           
+
             if (!m_scatterHandle) {
                 m_scatterHandle = mem.CreateScatterHandle();
             }
@@ -331,7 +342,7 @@ namespace ESP {
                 m_scatterHandle = mem.CreateScatterHandle();
             }
 
-            
+
             for (int i = 0; i < MAX_PLAYERS; ++i) {
                 const auto& p = currentPlayers[i];
                 if (!p.hObject || p.ClientID == m_localPlayer.ClientID)
@@ -347,9 +358,10 @@ namespace ESP {
             }
             mem.ExecuteReadScatter(m_scatterHandle);
 
-            // Second pass: Cache bone data.
-            if (Bonecheckbox) {
-                
+            
+            bool needBones = (Bonecheckbox || AimPosition  == 1 || AimPosition == 2);
+            if (needBones) {
+
                 std::vector<int> boneGroups = {
                     6, 5, 4, 3, 1,
                     21, 22, 23, 25, 26,
@@ -357,15 +369,15 @@ namespace ESP {
                     7, 8, 9,
                     10,
                 };
-               
+
 
                 for (int i = 0; i < MAX_PLAYERS; ++i) {
                     if (!tempBoneArrayAddresses[i])
                         continue;
 
-                   
+
                     std::array<D3DXMATRIX, NUM_BONES> localMats;
-                   
+
                     for (size_t j = 0; j < NUM_BONES; j++) {
                         int bone = boneGroups[j];
                         uintptr_t matrixAddr = tempBoneArrayAddresses[i] + (bone * sizeof(D3DXMATRIX));
@@ -373,7 +385,7 @@ namespace ESP {
                     }
                     mem.ExecuteReadScatter(m_scatterHandle);
 
-                   
+
                     std::array<D3DXVECTOR3, NUM_BONES> bonePositions;
                     for (size_t j = 0; j < NUM_BONES; j++) {
                         bonePositions[j].x = localMats[j]._14;
@@ -382,15 +394,15 @@ namespace ESP {
                     }
                     tempExtraBones[i] = bonePositions;
                 }
-                 
+
                 for (int i = 0; i < MAX_PLAYERS; ++i) {
                     if (!tempBoneArrayAddresses[i])
                         continue;
-                    tempHeadPositions[i] = tempExtraBones[i][0];  // bone 6 should be at index 0.
+                    tempHeadPositions[i] = tempExtraBones[i][0];   
                 }
             }
             else {
-               
+
                 for (int i = 0; i < MAX_PLAYERS; ++i) {
                     if (!tempBoneArrayAddresses[i])
                         continue;
@@ -407,13 +419,12 @@ namespace ESP {
                 }
             }
 
-            
+
             m_headPositions = tempHeadPositions;
             m_footPositions = tempFootPositions;
             m_absolutePositions = tempAbsolutePositions;
             m_isDeadFlags = tempIsDeadFlags;
 
-             
             m_minimalPlayers.clear();
             m_minimalPlayers.reserve(MAX_PLAYERS);
             for (int i = 0; i < MAX_PLAYERS; ++i) {
@@ -429,8 +440,8 @@ namespace ESP {
                 mpd.FootPos = m_footPositions[i];
                 mpd.AbsPos = m_absolutePositions[i];
                 mpd.IsDead = (m_isDeadFlags[i] != 0);
-                if (Bonecheckbox) {
-                    
+                if (needBones) {
+
                     mpd.bones = tempExtraBones[i];
                 }
                 m_minimalPlayers.push_back(mpd);
@@ -438,5 +449,5 @@ namespace ESP {
 
             return true;
         }
-        };
-    }
+    };
+}

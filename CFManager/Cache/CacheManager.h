@@ -2,19 +2,18 @@
 
 #include "Cache.h"
 #include <atomic>
-#include <memory>
 #include <mutex>
 #include <thread>
 #include <chrono>
 
- 
+
 
 class CacheManager {
 public:
     CacheManager()
         : m_running(false),
-        m_minCycle(std::chrono::milliseconds(9)),
-        m_targetCycle(std::chrono::milliseconds(0))
+        m_minCycle(std::chrono::milliseconds(5))
+      
     {
         m_activeCache = std::make_unique<ESP::Cache>();
         m_pendingCache = std::make_unique<ESP::Cache>();
@@ -31,10 +30,8 @@ public:
        
         auto targetTime = m_lastCycle + m_minCycle;  
         auto cacheUpdateStart = std::chrono::steady_clock::now();
-        if (!m_pendingCache->Update(mem)) {
-            
-            return;
-        }
+
+        m_pendingCache->Update(mem);
         auto cacheUpdateEnd = std::chrono::steady_clock::now();
          
       
@@ -95,4 +92,5 @@ private:
     std::thread m_updateThread;
 };
 
-extern CacheManager g_cacheManager;
+class CacheManager;  
+extern CacheManager g_cacheManager;  

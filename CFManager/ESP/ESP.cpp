@@ -1,13 +1,19 @@
+
+
+#pragma once
 #include "ESP.h"
+#include <render.h>
+
+ 
+ 
+
 using namespace std::chrono_literals;
 void ESP::Render(Memory& mem, std::shared_ptr<ESP::Snapshot> snapshot, ImDrawList* draw)
 {
     bool drawActive = snapshot->m_clientShell.inGame();
 
     if (!drawActive) {
-        draw->CmdBuffer.clear();
-        draw->VtxBuffer.clear();
-        draw->IdxBuffer.clear();
+        return;
     }
     else {
 
@@ -15,13 +21,7 @@ void ESP::Render(Memory& mem, std::shared_ptr<ESP::Snapshot> snapshot, ImDrawLis
         if (snapshot) {
             for (const auto& enemy : snapshot->enemies) {
 
-                if (!snapshot->m_clientShell.inGame())
-                {
-                    continue;
-
-                }
-
-
+               
                 bool isAlly = (enemy.Team == snapshot->localTeam);
 
                 if (Filterteams && isAlly)
@@ -30,8 +30,10 @@ void ESP::Render(Memory& mem, std::shared_ptr<ESP::Snapshot> snapshot, ImDrawLis
                 if (enemy.IsDead)
                     continue;
 
+               
+              
 
-                D3DXVECTOR3 headPos = enemy.HeadPos;
+                D3DXVECTOR3 headPos = enemy.HeadPos;  
                 D3DXVECTOR3 footPos = enemy.FootPos;
 
 
@@ -52,7 +54,8 @@ void ESP::Render(Memory& mem, std::shared_ptr<ESP::Snapshot> snapshot, ImDrawLis
                 float dx = enemy.AbsPos.x - snapshot->localAbsPos.x;
                 float dy = enemy.AbsPos.y - snapshot->localAbsPos.y;
                 float dz = enemy.AbsPos.z - snapshot->localAbsPos.z;
-                float distanceMeters = std::fmaxf((sqrtf(dx * dx + dy * dy + dz * dz) - 400.0f) / 100.0f, 0.0f);
+                float distanceMeters = sqrtf(dx * dx + dy * dy + dz * dz) / 100.0f;
+
 
                 float scaleFactor = std::clamp(1.5f - (distanceMeters / 50.0f), 0.6f, 1.2f);
 
@@ -86,14 +89,25 @@ void ESP::Render(Memory& mem, std::shared_ptr<ESP::Snapshot> snapshot, ImDrawLis
                 rect.headPos = headPos;
                 rect.isAlly = (enemy.Team == snapshot->localTeam);
 
-                if (Flogs[0]) DrawHeadCircle(rect, draw, snapshot->drawPrim);
-                if (Dcheckbox) DrawBoxESP(rect, draw, scaleFactor,esptype);
+                if (Flogs[0]|| Bonecheckbox) DrawHeadCircle(rect, draw, snapshot->drawPrim);
+                if (Dcheckbox && esptype == 3) {
+                     
+                    Draw3DBox(draw, enemy.FootPos, enemy.HeadPos,
+                        snapshot->drawPrim,
+                        IM_COL32(finalColor.R, finalColor.G, finalColor.B, finalColor.A));
+                }
+                
+                else if (Dcheckbox) {
+                    DrawBoxESP(rect, draw, scaleFactor, esptype);
+                }
                 if (showEspLines && !rect.isAlly) DrawTraceline(rect, *snapshot, draw);
                 if (Flogs[1]) DrawHealthBar(rect, static_cast<float>(enemy.Health), draw);
                 if (Flogs[2]) DrawNameESP(rect, draw);
                 if (Flogs[3])DrawDistance(rect, distanceMeters, draw);
                 if (Bonecheckbox)
                     DrawBones(mem, *snapshot, draw);
+               
+                
                 
             }
         }
@@ -113,10 +127,10 @@ void ESP::DrawHeadCircle(const RectData& rect, ImDrawList* draw, const LT_DRAWPR
     float dy = rect.headPos.y - crosshairCenter.y;
     float distance = sqrtf(dx * dx + dy * dy);
 
-    float headRadius = 0.4f + hdtk;
+    float headRadius = 0.6f + hdtk;
     float threshold = 40.0f;
 
-    ImVec2 headCenter(rect.headPos.x - 3.0f, rect.headPos.y - 8.0f);
+    ImVec2 headCenter(rect.headPos.x - 3.0f, rect.headPos.y - 6.0f);
 
     draw->AddCircleFilled(
         headCenter,
@@ -126,12 +140,21 @@ void ESP::DrawHeadCircle(const RectData& rect, ImDrawList* draw, const LT_DRAWPR
 
     if (distance < threshold && crosshair_notify && !rect.isAlly)
     {
-        ImVec2 shootPos(rect.headPos.x + 20.0f, rect.headPos.y - 25.0f);
+        ImVec2 shootPos(rect.headPos.x + 20.0f, rect.headPos.y - 15.0f);
 
-       //Gui::PushFont(font::tahoma_bold2);
-        draw->AddText(shootPos, IM_COL32(255, 0, 0, 255), "Shoot!");
-       // ImGui::PopFont();
+        if (font::tahoma_bold)  
+        {
+            draw->AddText(
+                font::tahoma_bold,
+                font::tahoma_bold->FontSize,       
+                ImVec2(rect.headPos.x + 20.0f, rect.headPos.y - 25.0f),
+                IM_COL32(255, 0, 0, 255),
+                "Shoot!"
+            );
+        }
+
     }
+
 }
  void ESP::DrawCornerBox(int x, int y, int w, int h, float borderPx, RGBA color) {
     ImDrawList* draw = ImGui::GetForegroundDrawList();
@@ -182,9 +205,12 @@ void ESP::DrawBoxESP(const RectData& rect, ImDrawList* draw, float scaleFactor, 
             IM_COL32(rect.color.R, rect.color.G, rect.color.B, rect.color.A),
             0.0f, ImDrawFlags_Closed, boxtk * scaleFactor
         );
+    case 3:
+       
         break;
     }
 }
+
 
 void ESP::DrawTraceline(const RectData& rect, const ESP::Snapshot& snapshot, ImDrawList* draw)
 {
@@ -192,6 +218,7 @@ void ESP::DrawTraceline(const RectData& rect, const ESP::Snapshot& snapshot, ImD
     if (rect.isAlly)
         return;
 
+    
     const auto& PRIME = snapshot.drawPrim;
     int vpWidth = PRIME.viewport.Width;
     int vpHeight = PRIME.viewport.Height;
@@ -219,6 +246,62 @@ void ESP::DrawTraceline(const RectData& rect, const ESP::Snapshot& snapshot, ImD
         g_ESPLineColor.A);
 
     draw->AddBezierCubic(viewportCenter, p2, p3, enemyScreenPos, colU32, 6.0f, 10);
+}
+void ESP::Draw3DBox(ImDrawList* draw, const D3DXVECTOR3& footPos, const D3DXVECTOR3& headPos,
+    const KLASSES::LT_DRAWPRIM& drawPrim, ImU32 color)
+{
+    
+    D3DXVECTOR3 centerPos = {
+        (footPos.x + headPos.x) * 0.5f,
+        (footPos.y + headPos.y) * 0.5f,
+        (footPos.z + headPos.z) * 0.5f
+    };
+
+    
+    float playerHeight = fabs(headPos.y - footPos.y);
+    float boxHeight = playerHeight * 1.4f;    
+    float boxWidth = playerHeight * 0.8f;      
+    float boxDepth = boxWidth * 1.2f;          
+
+    centerPos.z -= boxDepth * 0.1f;
+
+    float halfHeight = boxHeight * 0.5f;
+    float halfWidth = boxWidth * 0.5f;
+    float halfDepth = boxDepth * 0.5f;
+
+    
+    D3DXVECTOR3 corners[8] = {
+        {centerPos.x - halfWidth, centerPos.y - halfHeight, centerPos.z - halfDepth}, // bottom back left
+        {centerPos.x + halfWidth, centerPos.y - halfHeight, centerPos.z - halfDepth}, // bottom back right
+        {centerPos.x + halfWidth, centerPos.y - halfHeight, centerPos.z + halfDepth}, // bottom front right
+        {centerPos.x - halfWidth, centerPos.y - halfHeight, centerPos.z + halfDepth}, // bottom front left
+        {centerPos.x - halfWidth, centerPos.y + halfHeight, centerPos.z - halfDepth}, // top back left
+        {centerPos.x + halfWidth, centerPos.y + halfHeight, centerPos.z - halfDepth}, // top back right
+        {centerPos.x + halfWidth, centerPos.y + halfHeight, centerPos.z + halfDepth}, // top front right
+        {centerPos.x - halfWidth, centerPos.y + halfHeight, centerPos.z + halfDepth}  // top front left
+    };
+
+    // Project to screen space
+    D3DXVECTOR3 screenCorners[8];
+    for (int i = 0; i < 8; i++) {
+        screenCorners[i] = corners[i];
+        if (!KLASSES::EngineW2S(drawPrim, &screenCorners[i])) return;
+    }
+
+    // Draw 12 connecting lines
+    const int connections[12][2] = {
+        {0,1}, {1,2}, {2,3}, {3,0}, // bottom
+        {4,5}, {5,6}, {6,7}, {7,4}, // top
+        {0,4}, {1,5}, {2,6}, {3,7}  // vertical
+    };
+
+    for (const auto& [a, b] : connections) {
+        draw->AddLine(
+            ImVec2(screenCorners[a].x, screenCorners[a].y),
+            ImVec2(screenCorners[b].x, screenCorners[b].y),
+            color, 2.5f  // Slightly thicker lines
+        );
+    }
 }
 
 static ImU32 GetHealthColor(float healthPercent)
@@ -286,7 +369,7 @@ void ESP::DrawNameESP(const RectData& rect, ImDrawList* draw)
 void ESP::DrawDistance(const RectData& rect, float distance, ImDrawList* draw)
 {
     char buffer[32];
-    sprintf(buffer, "%.1fm", distance);
+    sprintf_s(buffer, "%.1fm", distance);
 
     ImVec2 textSize = ImGui::CalcTextSize(buffer);
     float textX = rect.x + (rect.w - textSize.x) * 0.5f;
@@ -366,3 +449,61 @@ void ESP::DrawBones(Memory& mem, const ESP::Snapshot& snapshot, ImDrawList* draw
         );
     }
 }
+void ESP::DrawFOVCircle(ImDrawList* draw, const KLASSES::LT_DRAWPRIM& drawPrim, float AimFov, ImU32 color)
+{
+    int screenCenterX = drawPrim.viewport.X + drawPrim.viewport.Width / 2;
+    int screenCenterY = drawPrim.viewport.Y + drawPrim.viewport.Height / 2;
+    ImVec2 center = ImVec2(screenCenterX, screenCenterY);
+
+    float fovRadians = AimFov * (M_PI / 180.0f);
+    float fovRadius = fovRadians * (drawPrim.viewport.Height / M_PI);
+
+    draw->AddCircle(center, fovRadius, color, 72, 7.5f);
+}
+ void ESP::DebugDrawFOVDetection(const std::shared_ptr<ESP::Snapshot>& snapshot, ImDrawList* draw) {
+    if (!snapshot) return;
+
+    ImVec2 screenCenter = ImVec2(
+        snapshot->drawPrim.viewport.X + snapshot->drawPrim.viewport.Width * 0.5f,
+        snapshot->drawPrim.viewport.Y + snapshot->drawPrim.viewport.Height * 0.5f
+    );
+
+    float fovRadius = AimFov * (snapshot->drawPrim.viewport.Height / 180.0f);
+    bool enemyInFOV = false;
+
+    for (const auto& enemy : snapshot->enemies) {
+        if (enemy.IsDead || enemy.Team == snapshot->localTeam) continue;
+
+        D3DXVECTOR3 screenPos = enemy.AbsPos;
+        if (!EngineW2S(snapshot->drawPrim, &screenPos)) continue;
+
+        float dx = screenPos.x - screenCenter.x;
+        float dy = screenPos.y - screenCenter.y;
+        float distToCrosshair = sqrtf(dx * dx + dy * dy);
+
+        if (distToCrosshair <= fovRadius) {
+            enemyInFOV = true;
+            break;
+        }
+    }
+
+    if (enemyInFOV) {
+        ImVec2 labelPos(screenCenter.x + fovRadius + 10.0f, screenCenter.y);
+        draw->AddText(ImVec2(labelPos.x, labelPos.y), IM_COL32(255, 0, 0, 255), "Enemy In FOV");
+    }
+}
+  
+
+ D3DXVECTOR3 ESP::NormalizeVec3(const D3DXVECTOR3& vec)
+ {
+     D3DXVECTOR3 out = { 0.0f, 0.0f, 0.0f };
+     float len = D3DXVec3Length(&vec);
+     if (len > FLT_EPSILON)
+         out = vec / len;
+     return out;
+ }
+   
+
+
+
+

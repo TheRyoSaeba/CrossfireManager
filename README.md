@@ -46,7 +46,7 @@
    - FPS/refresh
 - Planned( if i get lucky)
   - Triggerbot(Soon™) if i get visible check intersectsegment or whatever with shellcode idk
-  - Fixing and adding more Misc hacks
+  - Fixing and adding more Misc hacks, most of the people i've seen use detours ...
     
 
 

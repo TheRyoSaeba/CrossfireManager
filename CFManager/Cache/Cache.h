@@ -116,7 +116,7 @@ namespace ESP {
             m_lastEntityUpdate = std::chrono::steady_clock::now();
         }
 
-    private:
+ //yes i know 
 
         std::chrono::steady_clock::time_point m_lastEntityUpdate;
         static constexpr std::chrono::milliseconds ENTITY_UPDATE_INTERVAL{ 200 };

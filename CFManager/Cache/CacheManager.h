@@ -26,27 +26,28 @@ public:
     }
 
     void Update(Memory& mem) {
+        auto targetTime = m_lastCycle + m_minCycle;
 
-       
-        auto targetTime = m_lastCycle + m_minCycle;  
-        auto cacheUpdateStart = std::chrono::steady_clock::now();
-
-        m_pendingCache->Update(mem);
-        auto cacheUpdateEnd = std::chrono::steady_clock::now();
-         
-      
-        if (m_updateMutex.try_lock()) {
-            m_activeSnapshot.store(std::make_shared<ESP::Snapshot>(m_pendingCache->GetSnapshot()));
-            std::swap(m_activeCache, m_pendingCache);
-            m_updateMutex.unlock();
+        {
+            std::lock_guard<std::mutex> lock(m_updateMutex);
+            mem.Read(offs::LT_SHELL, &m_activeCache->m_clientShell, sizeof(KLASSES::LTClientShell));
         }
-    
-       
+
+        bool gameValid = m_pendingCache->Update(mem);
+
+        {
+            std::lock_guard<std::mutex> lock(m_updateMutex);
+            if (gameValid) {
+                std::swap(m_activeCache, m_pendingCache);
+            }
+            m_activeSnapshot.store(std::make_shared<ESP::Snapshot>(m_activeCache->GetSnapshot()), std::memory_order_release);
+        }
+
         auto now = std::chrono::steady_clock::now();
         if (now < targetTime) {
             std::this_thread::sleep_until(targetTime);
         }
-        m_lastCycle = std::chrono::steady_clock::now();
+        m_lastCycle = now;
     }
 
     std::shared_ptr<ESP::Snapshot> GetSnapshot() const {

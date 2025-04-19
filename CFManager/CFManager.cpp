@@ -10,7 +10,9 @@ CacheManager g_cacheManager;
 
 int main()
 {
-    SetConsoleTitleA(xorstr_("MakimuraLoader"));
+    std::string title = xorstr_("MakimuraLoader");
+    SetConsoleTitleA(title.c_str());
+
     LOG_INFO("Connecting to DMA....\n");
 init:
     while (!mem.Init(GAME_NAME, true))

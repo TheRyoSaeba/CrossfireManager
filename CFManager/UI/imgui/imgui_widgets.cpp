@@ -365,7 +365,7 @@ bool ImGui::Keybind(const char* label, int* key, int* mode, bool enablemode)
 
     ImRect clickable(ImVec2(rect.Max.x - 10 - label_size.x, rect.Min.y), rect.Max);
     bool hovered = ItemHoverable(clickable, id, NULL);
-
+    static std::map<ImGuiID, bool> waitForMouseRelease;
     static std::map<ImGuiID, key_state> anim;
     auto it_anim = anim.find(id);
 
@@ -387,10 +387,10 @@ bool ImGui::Keybind(const char* label, int* key, int* mode, bool enablemode)
     if (hovered && io.MouseClicked[0])
     {
         if (g.ActiveId != id) {
-
             memset(io.MouseDown, 0, sizeof(io.MouseDown));
             memset(io.KeysDown, 0, sizeof(io.KeysDown));
             *key = 0;
+            waitForMouseRelease[id] = false;
         }
         ImGui::SetActiveID(id, window);
         ImGui::FocusWindow(window);
@@ -402,27 +402,26 @@ bool ImGui::Keybind(const char* label, int* key, int* mode, bool enablemode)
     }
 
     if (g.ActiveId == id) {
-        for (auto i = 0; i < 5; i++) {
-            if (io.MouseDown[i]) {
-                switch (i) {
-                case 0:
-                    k = 0x01;
-                    break;
-                case 1:
-                    k = 0x02;
-                    break;
-                case 2:
-                    k = 0x04;
-                    break;
-                case 3:
-                    k = 0x05;
-                    break;
-                case 4:
-                    k = 0x06;
-                    break;
+        if (!waitForMouseRelease[id])
+        {
+            if (!io.MouseDown[0])
+                waitForMouseRelease[id] = true;
+        }
+        else
+        {
+            for (int i = 0; i < 5; i++) {
+                if (io.MouseDown[i]) {
+                    switch (i) {
+                    case 0: k = 0x01; break;
+                    case 1: k = 0x02; break;
+                    case 2: k = 0x04; break;
+                    case 3: k = 0x05; break;
+                    case 4: k = 0x06; break;
+                    }
+                    value_changed = true;
+                    waitForMouseRelease[id] = false;
+                    ImGui::ClearActiveID();
                 }
-                value_changed = true;
-                ImGui::ClearActiveID();
             }
         }
         if (!value_changed) {

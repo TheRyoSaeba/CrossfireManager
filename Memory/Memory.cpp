@@ -7,6 +7,8 @@
 #include <tlhelp32.h>
 #include <unordered_set>
 #include "../CFManager.h"
+#include <chrono>
+using namespace std::chrono_literals;
 #define LOG_INFO(msg)    Logger::Info(xorstr_(msg))
 #define LOG_SUCCESS(msg) Logger::Success(xorstr_(msg))
 #define LOG_WARN(msg)    Logger::Warn(xorstr_(msg))
@@ -256,19 +258,27 @@ void Memory::full_refresh()
 }
 
 void Memory::Refreshing() {
-	std::thread([] {
-		while (true) {
+	std::jthread{ [](std::stop_token stoken) {
+		constexpr auto baseInterval = 10ms;
+		constexpr int mediumCycles = (4min) / baseInterval;
+
+		int cycles = 0;
+
+		while (!stoken.stop_requested()) {
 			if (mem.vHandle) {
-				VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_REFRESH_FREQ_MEM_PARTIAL, 1);
-				VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_REFRESH_FREQ_TLB_PARTIAL, 1);
+				VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_REFRESH_FREQ_MEM, 1);
+				VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_REFRESH_FREQ_TLB, 1);
+
+				if (++cycles >= mediumCycles) {
+					VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_REFRESH_FREQ_MEDIUM, 1);
+					cycles = 0;
+				}
 			}
-			std::this_thread::sleep_for(std::chrono::milliseconds(3));
+
+			std::this_thread::sleep_for(baseInterval);
 		}
-		}).detach();
+	} }.detach();
 }
-
-
-
 void Memory::process_time()
 {
 	 

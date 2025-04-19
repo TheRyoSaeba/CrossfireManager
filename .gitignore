@@ -374,3 +374,12 @@ FodyWeavers.xsd
 /CFManager/Authentication/auth.hpp
 /Output/CFManager.exe
 /Output/vcruntime140.dll
+/Output/VMProtectSDK64.dll
+/Output/vmm.dll
+/Output/symsrv.no
+/Output/symsrv.dll
+/Output/MYKMBOX.dll
+/Output/leechcore.dll
+/Output/imgui.ini
+/Output/FTD3XX.dll
+/Output/dbghelp.dll

@@ -368,3 +368,9 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/CFManager/cn_classes.h
+/CFManager/cn_offsets.h
+/CFManager/Authentication/Auth.cpp
+/CFManager/Authentication/auth.hpp
+/Output/CFManager.exe
+/Output/vcruntime140.dll

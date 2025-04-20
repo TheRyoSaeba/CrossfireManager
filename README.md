@@ -10,7 +10,6 @@
     - Head
     - Health Bar
     - Name
-    - Distance
     - FOV
    - Bones
    - See Ghost( Yes it's technically just ESP again but it counts)

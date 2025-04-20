@@ -82,8 +82,7 @@ namespace MainThread {
                             IM_COL32(31, 255, 83, 100));
                         
                     }
-                    uintptr_t Clntbase = reinterpret_cast<uintptr_t>(ctx.snapshot->m_clientShell.CPlayerClntBase);
-                    mem.WriteValueInRange<float>(Clntbase + 0x700, Clntbase + 0x900, 4.000f);
+                   
 
                     if (draw_radar)
                         ESP::RenderRadar(mem, ctx.snapshot, ctx.drawList);

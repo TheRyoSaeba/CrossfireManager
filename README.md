@@ -37,7 +37,7 @@
 - Misc
   - Huge ban risk with fast knives/superkill/godmode  but feel free to add them in
   - Camera Mode/First/third person/freecam 
-- Triggerbot(Soon™) if i get visible check intersectsegment or whatever with shellcode idk
+
  - Config
    - Create and save and refresh and whatever
  - Other

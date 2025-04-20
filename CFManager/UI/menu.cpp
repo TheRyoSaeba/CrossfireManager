@@ -797,7 +797,7 @@ namespace MainThread {
                 }
                 ImGui::End();
 
-                ImGui::Begin("Popupbox", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize);
+               /*ImGui::Begin("Popupbox", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize);
                 {
                     ImGui::CustomBeginChild("antiaim!!?!", ImVec2(300, 0), ImGuiWindowFlags_NoBringToFrontOnFocus);
                     {
@@ -815,7 +815,7 @@ namespace MainThread {
                     }
                     ImGui::CustomEndChild();
                 }
-                ImGui::End();
+                ImGui::End();*/  
 
                 ImGui::PopStyleColor();
 

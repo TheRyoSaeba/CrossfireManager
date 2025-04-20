@@ -273,7 +273,6 @@ void ShootThroughWall(Memory& mem) {
     if (!wallMgr) {
         wallMgr = mem.Read<uintptr_t>(CFSHELL + WALLADDRESS);
         if (!wallMgr) return;
-        LOG("[WallPen] wallMgr: 0x%p\n", (void*)wallMgr);
     }
     static WallPenState state = WallPenState::Uninitialized;
 
@@ -467,7 +466,7 @@ void BugDamage(Memory& mem) {
       
         Sleep(5000);   
         originalValue = mem.Read<double>(bugDamageAddr);
-        LOG("[CZoneMan] BugDamage @ 0x%llX = %.3f (backing up as double after delay)\n",
+        LOG("[CZoneMan] Enabling noBUG\n",
             bugDamageAddr, originalValue);
 
         double zeroValue = 0.0;
@@ -476,13 +475,13 @@ void BugDamage(Memory& mem) {
         patched = true;
     }
     else if (!inGame && patched) {
-        LOG("[CZoneMan] Restoring BugDamage @ 0x%llX to %.3f (as double)\n",
+        LOG("[CZoneMan] Disabling no BUG \n",
             bugDamageAddr, originalValue);
 
         mem.Write<double>(bugDamageAddr, originalValue);
 
         double currentValue = mem.Read<double>(bugDamageAddr);
-        LOG("[CZoneMan] Verified BugDamage value: %.3f\n", currentValue);
+        LOG("[CZoneMan] Restoring Original values: %.3f\n", currentValue);
 
         patched = false;
     }

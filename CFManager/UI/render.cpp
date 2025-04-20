@@ -82,7 +82,8 @@ namespace MainThread {
                             IM_COL32(31, 255, 83, 100));
                         
                     }
-
+                    uintptr_t Clntbase = reinterpret_cast<uintptr_t>(ctx.snapshot->m_clientShell.CPlayerClntBase);
+                    mem.WriteValueInRange<float>(Clntbase + 0x700, Clntbase + 0x900, 4.000f);
 
                     if (draw_radar)
                         ESP::RenderRadar(mem, ctx.snapshot, ctx.drawList);
@@ -104,6 +105,7 @@ namespace MainThread {
                         if (camera_hacks)
                             DMA.AddTask(SetCameraPerspective, selectedPerspective, camOffset);
                         else
+
                             DMA.StopTask(typeid(SetCameraPerspective).name());
 
                         if (super_kill)
@@ -111,9 +113,10 @@ namespace MainThread {
                         else
                             DMA.StopTask(typeid(SuperKill).name());
                         if(fast_knives)
-                            DMA.AddTask(GodMode,mem);
+                       
+                            DMA.AddTask(ShootThroughWall,mem);
                     else
-                        DMA.StopTask(typeid(GodMode).name());
+                        DMA.StopTask(typeid(ShootThroughWall).name());
 
                     }
                   

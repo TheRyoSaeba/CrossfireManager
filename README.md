@@ -1,6 +1,6 @@
  [![Discord](https://github.com/user-attachments/assets/4417118b-ea28-4527-b553-6016630e2cc7)](https://discordapp.com/users/makimura.dev)
  
- 
+ Will be updating for CFNA FREE DM me on Discord if interested in other versions BR/VN :makimura.dev
 
 
 ## Features

@@ -157,7 +157,8 @@ namespace MainThread {
 
                                 ImGui::SliderFloat("Aimbot FOV", &AimFov, 10.0f, 100.0f, "%.1f deg");
 
-                                ImGui::Spacing();
+                                const char* aimdevice[] = { "KMBOX", "MEMORY[Mem Write Required]"};
+                                ImGui::Combo("Aim Device", &selectedAimDevice, aimdevice, IM_ARRAYSIZE(aimdevice));
 
                                 ImGui::Keybind("AimKey", &aimkey, &keymode, true);
 
@@ -725,29 +726,84 @@ namespace MainThread {
 
                                     float availableWidth = ImGui::GetContentRegionAvail().x;
                                     float topButtonWidth = (availableWidth / 3.0f) - 10.0f;
+                                    float totalButtonWidth = topButtonWidth + ImGui::GetStyle().ItemSpacing.x;
                                     float topButtonHeight = 35.0f;
+
+                                    static bool showOverwritePopup = false;
 
                                     if (ImGui::Button("Create/Save", ImVec2(topButtonWidth, topButtonHeight)))
                                     {
-                                        SaveCheatConfig(configName);
-                                        ImGui::InsertNotification({ ImGuiToastType_Success, 3500, "Config Saved : %s\n",configName });text_add++;
-                                        configList = GetCheatConfigList();
+                                        bool exists = std::find(configList.begin(), configList.end(), configName) != configList.end();
+
+                                        if (strlen(configName) == 0)
+                                        {
+                                            
+                                        }
+                                        else if (!exists && configList.size() >= 9)
+                                        {
+                                            ImGui::InsertNotification({ ImGuiToastType_Error, 3500, "Config limit reached. Delete one before adding new." });
+                                        }
+                                        else
+                                        {
+                                            SaveCheatConfig(configName);
+
+                                            ImGui::InsertNotification({
+                                                ImGuiToastType_Success,
+                                                3500,
+                                                exists
+                                                    ? "Config Saved (Overwritten): %s"
+                                                    : "Config Created: %s",
+                                                configName
+                                                });
+
+                                            configList = GetCheatConfigList();
+                                            text_add++;
+                                        }
+                                    }
+
+                                   
+
+                                    if (ImGui::GetContentRegionAvail().x > totalButtonWidth) ImGui::SameLine();
+                                    if (ImGui::Button("Delete", ImVec2(topButtonWidth, topButtonHeight)))
+                                    {
+                                        if (strlen(configName) > 0)
+                                        {
+                                            std::string path = getCheatConfigDir() + "\\" + std::string(configName) + ".json";
+                                            if (std::filesystem::exists(path))
+                                            {
+                                                std::filesystem::remove(path);
+                                                ImGui::InsertNotification({ ImGuiToastType_Warning, 3500, "Deleted config: %s", configName });
+                                                configList = GetCheatConfigList();
+                                                configName[0] = '\0';
+                                            }
+                                            else
+                                            {
+                                                ImGui::InsertNotification({ ImGuiToastType_Error, 3500, "Config not found: %s", configName });
+                                            }
+                                        }
+                                        else
+                                        {
+                                            ImGui::InsertNotification({ ImGuiToastType_Error, 3500, "No config selected to delete." });
+                                        }
                                     }
 
                                     ImGui::SameLine();
 
+                                   
+                                    ImGui::SameLine();
+
+                                    if (ImGui::GetContentRegionAvail().x > totalButtonWidth) ImGui::SameLine();
                                     if (ImGui::Button("Folder", ImVec2(topButtonWidth, topButtonHeight)))
                                     {
-                                        std::string folderPath = getCheatConfigDir();
-                                        ShellExecuteA(nullptr, "open", folderPath.c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
+                                        ShellExecuteA(nullptr, "open", getCheatConfigDir().c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
                                     }
 
-                                    ImGui::SameLine();
-
+                                    if (ImGui::GetContentRegionAvail().x > totalButtonWidth) ImGui::SameLine();
                                     if (ImGui::Button("Refresh", ImVec2(topButtonWidth, topButtonHeight)))
                                     {
                                         configList = GetCheatConfigList();
                                     }
+
 
                                     ImGui::Spacing();
                                     ImGui::Separator();
@@ -762,6 +818,7 @@ namespace MainThread {
                                         {
                                             if (ImGui::Button(configList[i].c_str(), ImVec2(configButtonWidth, configButtonHeight)))
                                             {
+                                                strcpy_s(configName, configList[i].c_str());
                                                 if (LoadCheatConfig(configList[i]))
                                                 {
                                                     std::string successMsg = "Config Loaded: " + configList[i];

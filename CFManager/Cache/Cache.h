@@ -119,7 +119,7 @@ namespace ESP {
  //yes i know 
 
         std::chrono::steady_clock::time_point m_lastEntityUpdate;
-        static constexpr std::chrono::milliseconds ENTITY_UPDATE_INTERVAL{ 200 };
+        static constexpr std::chrono::milliseconds ENTITY_UPDATE_INTERVAL{ 50 };
         KLASSES::LTClientShell m_clientShell;
         KLASSES::pPlayer m_localPlayer;
         D3DXVECTOR3 m_localAbsolutePosition;
@@ -207,53 +207,7 @@ namespace ESP {
             }
             return false;
         }
-        bool UpdateLocalPlayer(Memory& mem) {
-
-
-
-            int localIdx = mem.Read<int>((uintptr_t)offs::LT_SHELL + offs::MYOFFSET);
-
-            uintptr_t localPlayerAddr = offs::LT_SHELL + offs::dwCPlayerStart + (localIdx * sizeof(offs::dwCPlayerSize));
-
-
-            if (!m_scatterHandle) {
-                m_scatterHandle = mem.CreateScatterHandle();
-            }
-            else {
-                mem.CloseScatterHandle(m_scatterHandle);
-            }
-
-
-            mem.AddScatterReadRequest(m_scatterHandle, localPlayerAddr, &m_localPlayer, sizeof(offs::dwCPlayerSize));
-            auto scatterStart = std::chrono::high_resolution_clock::now();
-            mem.ExecuteReadScatter(m_scatterHandle);
-            auto scatterEnd = std::chrono::high_resolution_clock::now();
-
-
-
-            if (!m_localPlayer.hObject) {
-                return false;
-            }
-
-
-            uintptr_t playerAddr = reinterpret_cast<uintptr_t>(m_localPlayer.hObject);
-            uintptr_t characFXAddr = reinterpret_cast<uintptr_t>(m_localPlayer.characFX);
-            uintptr_t clntBaseAddr = reinterpret_cast<uintptr_t>(m_clientShell.CPlayerClntBase);
-
-
-            mem.AddScatterReadRequest(m_scatterHandle, playerAddr + offsetof(KLASSES::obj, AbsolutePosition), &m_localAbsolutePosition, sizeof(D3DXVECTOR3));
-            mem.AddScatterReadRequest(m_scatterHandle, playerAddr + offsetof(KLASSES::obj, Head), &m_localHeadPosition, sizeof(D3DXVECTOR3));
-            mem.AddScatterReadRequest(m_scatterHandle, characFXAddr + offsetof(KLASSES::pCharacterFx, isDead), &m_localIsDead, sizeof(bool));
-            mem.AddScatterReadRequest(m_scatterHandle, clntBaseAddr + offsetof(KLASSES::pPlayerClntBase, Yaw), &m_localYaw, sizeof(float));
-            mem.AddScatterReadRequest(m_scatterHandle, clntBaseAddr + offsetof(KLASSES::pPlayerClntBase, Pitch), &m_localPitch, sizeof(float));
-
-
-            mem.ExecuteReadScatter(m_scatterHandle);
-
-            return true;
-        }
-
-
+   
         /// <summary>
         /// Make sure pplayer padding matches dwcplayersize if not usn..raw
         /// </summary>
@@ -261,10 +215,7 @@ namespace ESP {
         void UpdateEntities(Memory& mem)
         {
             const auto now = std::chrono::steady_clock::now();
-            if ((now - m_lastEntityUpdate < ENTITY_UPDATE_INTERVAL) ||
-                m_entityUpdateInProgress.load()) {
-                return;
-            }
+            if ((now - m_lastEntityUpdate < ENTITY_UPDATE_INTERVAL) || m_entityUpdateInProgress.load()) return;
 
             m_entityUpdateInProgress.store(true);
             m_lastEntityUpdate = now;
@@ -273,47 +224,56 @@ namespace ESP {
 
             const int inactiveBuffer = 1 - m_activeBuffer.load();
             auto& targetBuffer = m_players[inactiveBuffer];
+            std::fill(targetBuffer.begin(), targetBuffer.end(), KLASSES::pPlayer{});
 
-            const uintptr_t ENTITY_BASE = offs::LT_SHELL + offs::dwCPlayerStart;
-            const size_t entrySize = offs::dwCPlayerSize;
-            const size_t totalSize = entrySize * MAX_PLAYERS;
+         
 
-           
-            std::vector<std::byte> rawBuffer(totalSize);
+            std::vector<uintptr_t> addrs(MAX_PLAYERS, 0);
+            const bool tblOk = mem.Read(offs::LT_SHELL + ENTITY_START, addrs.data(), addrs.size() * sizeof(uintptr_t));
 
-            bool bulkSuccess = mem.Read(ENTITY_BASE, rawBuffer.data(), totalSize);
-
-            if (bulkSuccess)
+            if (tblOk)
             {
-               
-                for (int i = 0; i < MAX_PLAYERS; ++i)
+                auto sh = mem.CreateScatterHandle();
+                if (sh)
                 {
-                    std::byte* src = rawBuffer.data() + (i * entrySize);
-                    memcpy(&targetBuffer[i], src, std::min(sizeof(KLASSES::pPlayer), entrySize));
+                    for (int i = 0; i < MAX_PLAYERS; ++i)
+                    {
+                        const uintptr_t p = addrs[i];
+                        if (!p || !mem.IsValidPointer(p)) continue;
+                        mem.AddScatterReadRequest(sh, p, &targetBuffer[i], sizeof(KLASSES::pPlayer));
+                    }
+                    mem.ExecuteReadScatter(sh);
+                    mem.CloseScatterHandle(sh);
+                    m_activeBuffer.store(inactiveBuffer);
                 }
-
-                m_activeBuffer.store(inactiveBuffer);
-               // LOG("[UpdateEntities] Bulk read and decode successful. Swapped buffers.\n");
+                else
+                {
+                    for (int i = 0; i < MAX_PLAYERS; ++i)
+                    {
+                        const uintptr_t p = addrs[i];
+                        if (!p || !mem.IsValidPointer(p)) { targetBuffer[i] = {}; continue; }
+                        mem.Read(p, &targetBuffer[i], sizeof(KLASSES::pPlayer));
+                    }
+                    m_activeBuffer.store(inactiveBuffer);
+                }
             }
             else
             {
-                //OG("[UpdateEntities] Bulk read failed! Falling back to GetPlayerByIndex.\n");
-
                 for (int i = 0; i < MAX_PLAYERS; ++i)
                 {
-                    targetBuffer[i] = m_clientShell.GetPlayerByIndex(i);
+                    const uintptr_t p = mem.Read<uintptr_t>(offs::LT_SHELL + ENTITY_START + size_t(i) * 8);
+                    if (!p || !mem.IsValidPointer(p)) { targetBuffer[i] = {}; continue; }
+                    mem.Read(p, &targetBuffer[i], sizeof(KLASSES::pPlayer));
                 }
-
                 m_activeBuffer.store(inactiveBuffer);
-                LOG("[UpdateEntities] Fallback update complete. Swapped buffers.\n");
             }
 
             const auto endTime = std::chrono::steady_clock::now();
             const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-            //LOG("[UpdateEntities] Time taken: %lld ms\n", duration.count());
 
             m_entityUpdateInProgress.store(false);
         }
+
 
 
 
@@ -337,10 +297,7 @@ namespace ESP {
             if (!m_scatterHandle) {
                 m_scatterHandle = mem.CreateScatterHandle();
             }
-            else {
-                mem.CloseScatterHandle(m_scatterHandle);
-                m_scatterHandle = mem.CreateScatterHandle();
-            }
+
 
 
             for (int i = 0; i < MAX_PLAYERS; ++i) {
@@ -370,27 +327,26 @@ namespace ESP {
                     10,
                 };
 
+                std::array<std::array<D3DXMATRIX, NUM_BONES>, MAX_PLAYERS> allLocalMats{};
+                for (int i = 0; i < MAX_PLAYERS; ++i) {
+                    if (!tempBoneArrayAddresses[i])
+                        continue;
+                    for (size_t j = 0; j < NUM_BONES; j++) {
+                        int bone = boneGroups[j];
+                        uintptr_t matrixAddr = tempBoneArrayAddresses[i] + (bone * sizeof(D3DXMATRIX));
+                        mem.AddScatterReadRequest(m_scatterHandle, matrixAddr, &allLocalMats[i][j], sizeof(D3DXMATRIX));
+                    }
+                }
+                mem.ExecuteReadScatter(m_scatterHandle);
 
                 for (int i = 0; i < MAX_PLAYERS; ++i) {
                     if (!tempBoneArrayAddresses[i])
                         continue;
-
-
-                    std::array<D3DXMATRIX, NUM_BONES> localMats;
-
+                    std::array<D3DXVECTOR3, NUM_BONES> bonePositions{};
                     for (size_t j = 0; j < NUM_BONES; j++) {
-                        int bone = boneGroups[j];
-                        uintptr_t matrixAddr = tempBoneArrayAddresses[i] + (bone * sizeof(D3DXMATRIX));
-                        mem.AddScatterReadRequest(m_scatterHandle, matrixAddr, &localMats[j], sizeof(D3DXMATRIX));
-                    }
-                    mem.ExecuteReadScatter(m_scatterHandle);
-
-
-                    std::array<D3DXVECTOR3, NUM_BONES> bonePositions;
-                    for (size_t j = 0; j < NUM_BONES; j++) {
-                        bonePositions[j].x = localMats[j]._14;
-                        bonePositions[j].y = localMats[j]._24;
-                        bonePositions[j].z = localMats[j]._34;
+                        bonePositions[j].x = allLocalMats[i][j]._14;
+                        bonePositions[j].y = allLocalMats[i][j]._24;
+                        bonePositions[j].z = allLocalMats[i][j]._34;
                     }
                     tempExtraBones[i] = bonePositions;
                 }
@@ -402,14 +358,13 @@ namespace ESP {
                 }
             }
             else {
-
                 for (int i = 0; i < MAX_PLAYERS; ++i) {
                     if (!tempBoneArrayAddresses[i])
                         continue;
                     uintptr_t headBoneAddr = tempBoneArrayAddresses[i] + (6 * sizeof(D3DXMATRIX));
                     mem.AddScatterReadRequest(m_scatterHandle, headBoneAddr, &tempHeadBoneMatrices[i], sizeof(D3DXMATRIX));
-                    mem.ExecuteReadScatter(m_scatterHandle);
                 }
+                mem.ExecuteReadScatter(m_scatterHandle);
                 for (int j = 0; j < MAX_PLAYERS; ++j) {
                     tempHeadPositions[j] = D3DXVECTOR3(
                         tempHeadBoneMatrices[j]._14,

@@ -442,6 +442,7 @@ public:
 	int RebootDevice();
 	// …Ë÷√…Ë±∏s
 	int SetConfig(const std::string& IP, WORD Port);
+	int ChangePicture(const unsigned char* buff_128_160);
 public:
 	friend class KmBoxMouse;
 	KmBoxMouse Mouse;

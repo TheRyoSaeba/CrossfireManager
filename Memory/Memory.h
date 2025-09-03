@@ -11,6 +11,7 @@
 #include <thread>
 #include <stop_token>
 #include <typeinfo>
+#include <mutex>
 
 extern bool manual_refresh;
 class Memory
@@ -214,6 +215,9 @@ public:
 	 * \param size The size of the buffer
 	 * \return 
 	 */
+
+	bool RawDumpToFile(uintptr_t base, size_t size, DWORD pidWithFlag, const std::string& path);
+
 	bool Write(uintptr_t address, void* buffer, size_t size) const;
 	bool Write(uintptr_t address, void* buffer, size_t size, int pid) const;
 	 
@@ -359,6 +363,8 @@ public:
 
 	/*the FPGA handle*/
 	VMM_HANDLE vHandle;
+	// Serialize low-level VMM operations to avoid UI stalls and device contention
+	mutable std::mutex vmmMutex;
 };
 
 inline Memory mem;

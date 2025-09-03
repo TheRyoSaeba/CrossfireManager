@@ -1,11 +1,14 @@
-#include "../Misc/Misc.h"
+﻿#include "../Misc/Misc.h"
 #include "render.h"
 #include <Memory.h>
 #include "../Authentication/auth.hpp"
 #include "../region_header.h"
 #include "../Config/globals.h"
 #include "../Config/config.h"
+
  
+
+
 namespace MainThread {
 
 
@@ -13,24 +16,17 @@ namespace MainThread {
     int imgui_menu(HWND hwnd)
     {
 
-       // DMA.AddTask(StartKeyCheck,  hwnd);
-        
-        
 
-        bool isKeyPressed = (GetAsyncKeyState(showhidekey) & 0x8001) == 0x8001;  
 
-        static bool previousKeyState = false;
-        if (isKeyPressed && !previousKeyState) {
-            showMenu = !showMenu;
-            set_mouse_passthrough(hwnd);
-        }
-        previousKeyState = isKeyPressed;
+        DMA.AddTask(StartKeyCheck, hwnd);
+
+
         ImGuiStyle* style = &ImGui::GetStyle();
-        
+
 
         c::accent = { color[0], color[1], color[2], 1.f };
         c::bg::outline = c::accent;
-       
+
         style->WindowPadding = ImVec2(0, 0);
         style->ItemSpacing = ImVec2(20, 20);
         style->WindowBorderSize = 0;
@@ -66,7 +62,7 @@ namespace MainThread {
 
                 ImGui::PopFont();
                 ImGui::PopFont();
-                 
+
                 const char* rightLogoIcon = "R";
                 const char* rightLogoText = "CrossfireManager";
                 ImVec2 rIconSize = ImGui::CalcTextSize(rightLogoIcon);
@@ -132,13 +128,13 @@ namespace MainThread {
                         if (ImGui::TabsHor(1 == tabsHor, "b", "Class Config", "Just a description of this tab", ImVec2(100, 50))) tabsHor = 1;
                         ImGui::SameLine();
                         //finished
-                        if (ImGui::TabsHor(2 == tabsHor, "c", "triggerbot", "Just a description of this tab", ImVec2(100, 50))) tabsHor = 2;
-                        ImGui::SameLine();
+
                         //finished
-                     
+
                         //finished
                     }
                     ImGui::EndGroup();
+
 
                     ImGui::SetCursorPos(ImVec2(200, 50) + spacing);
                     ImGui::BeginChild("Child", ImVec2(region.x - 200, region.y - 50) - spacing);
@@ -157,16 +153,16 @@ namespace MainThread {
 
                                 ImGui::SliderFloat("Aimbot FOV", &AimFov, 10.0f, 100.0f, "%.1f deg");
 
-                                const char* aimdevice[] = { "KMBOX", "MEMORY[Mem Write Required]"};
-                                ImGui::Combo("Aim Device", &selectedAimDevice, aimdevice, IM_ARRAYSIZE(aimdevice));
+                                const char* aimdevice[] = { "Regular", "Hybrid" };
+                                ImGui::Combo("AimBot Version", &selectedAimDevice, aimdevice, IM_ARRAYSIZE(aimdevice));
 
                                 ImGui::Keybind("AimKey", &aimkey, &keymode, true);
 
-                               
+
 
                             }
                             ImGui::CustomEndChild();
- 
+
                         }
                         ImGui::EndGroup();
 
@@ -184,18 +180,18 @@ namespace MainThread {
 
                                 ImGui::SliderFloat("Target Distance", &MaxAimDistance, 10.0f, 500.0f, "%.1f m", ImGuiSliderFlags_AlwaysClamp);
 
-                                ImGui::SliderInt("Smoothing", &smoothing, 1,  10, "%d", ImGuiSliderFlags_AlwaysClamp);
+                                ImGui::SliderInt("Smoothing", &smoothing, 1, 10, "%d", ImGuiSliderFlags_AlwaysClamp);
 
-                                 const char* targetoptions[] = { "Screen", "World", "Combined" };
-                                 ImGui::Combo("Prioritize", &TargetSwitch, targetoptions, IM_ARRAYSIZE(targetoptions));
-                         
-                              
+                                const char* targetoptions[] = { "Screen", "World", "Combined" };
+                                ImGui::Combo("Prioritize", &TargetSwitch, targetoptions, IM_ARRAYSIZE(targetoptions));
+
+
                             }
                             ImGui::CustomEndChild();
 
-                            
 
-                         
+
+
                         }
                         ImGui::EndGroup();
 
@@ -215,7 +211,7 @@ namespace MainThread {
 
                                 ImGui::Checkbox("Enable Class Configs", &perWeaponConfig);
 
-                              //  ImGui::Combo("Select Class", &select_combo, items, IM_ARRAYSIZE(items), ARRAYSIZE(items));
+                                //  ImGui::Combo("Select Class", &select_combo, items, IM_ARRAYSIZE(items), ARRAYSIZE(items));
 
                             }
                             ImGui::CustomEndChild();
@@ -230,7 +226,7 @@ namespace MainThread {
                             {
 
 
-                                
+
 
                             }
                             ImGui::CustomEndChild();
@@ -292,7 +288,7 @@ namespace MainThread {
 
                                 ImGui::MultiCombo("Flags", Flogs, Flogss, 4);
 
-                                const char* items[4]{ "Regular", "Corner", "Filled","3D"};
+                                const char* items[4]{ "Regular", "Corner", "Filled","3D" };
                                 ImGui::Combo("ESP Type", &esptype, items, IM_ARRAYSIZE(items));
 
 
@@ -327,7 +323,7 @@ namespace MainThread {
                             {
 
                                 static int currentColorSelection = 0;
-                                const char* colorChoices[] = { "Enemy", "Traceline", "Name", "Bones", "Ally" };
+                                const char* colorChoices[] = { "Enemy", "Traceline", "Name", "Bones", "Ally","FOV" };
                                 ImGui::Combo("Color Editor", &currentColorSelection, colorChoices, IM_ARRAYSIZE(colorChoices));
                                 static float colorTemp[4] = { 1.f, 1.f, 1.f, 1.f };
                                 if (currentColorSelection == 0) RGBAtoFloat4(g_EnemyColor, colorTemp);
@@ -335,6 +331,7 @@ namespace MainThread {
                                 else if (currentColorSelection == 2) RGBAtoFloat4(g_NameColor, colorTemp);
                                 else if (currentColorSelection == 3) RGBAtoFloat4(g_HeadColor, colorTemp);
                                 else if (currentColorSelection == 4) RGBAtoFloat4(g_AllyColor, colorTemp);
+                                else if (currentColorSelection == 5) RGBAtoFloat4(g_FOVColor, colorTemp);
                                 if (ImGui::ColorEdit4("Choose Color", colorTemp, picker_flags)) {
                                     RGBA newColor = Float4toRGBA(colorTemp);
                                     if (currentColorSelection == 0) g_EnemyColor = newColor;
@@ -342,6 +339,7 @@ namespace MainThread {
                                     else if (currentColorSelection == 2) g_NameColor = newColor;
                                     else if (currentColorSelection == 3) g_HeadColor = newColor;
                                     else if (currentColorSelection == 4) g_AllyColor = newColor;
+                                    else if (currentColorSelection == 5) g_FOVColor = newColor;
                                 }
 
                             }
@@ -407,7 +405,7 @@ namespace MainThread {
 
                     ImGui::BeginGroup();
                     {
-                       
+
                         if (ImGui::TabsHor(0 == misctabhor, "h", "Camera", "Camera Hacks", ImVec2(100, 50)))
                             misctabhor = 0;
                         ImGui::SameLine();
@@ -455,12 +453,12 @@ namespace MainThread {
 
                                 }
 
-                                
- 
+
+
                                 ImGui::SliderFloat("Camera X", &camOffset.x, -180.f, 180.f, "%.0f", ImGuiSliderFlags_AlwaysClamp);
                                 ImGui::SliderFloat("Camera Y", &camOffset.y, -180.f, 180.f, "%.0f", ImGuiSliderFlags_AlwaysClamp);
                                 ImGui::SliderFloat("Camera Z", &camOffset.z, -180.f, 180.f, "%.0f", ImGuiSliderFlags_AlwaysClamp);
- 
+
 
                             }
                             ImGui::CustomEndChild();
@@ -505,11 +503,11 @@ namespace MainThread {
 
                             ImGui::CustomBeginChild("Weapon Hacks", ImVec2((region.x - (200 + spacing.x * 3)) / 2, 0));
                             {
-                               ImGui::Checkbox("Fast Knives [Memory Write Required]", &fast_knives);
+                                ImGui::Checkbox("No Recoil [Memory Write Required]", &fast_knives);
 
-                               
-                               ImGui::Checkbox("SuperKill [Memory Write Required]", &super_kill);
-                              
+
+                                ImGui::Checkbox("SuperKill [Memory Write Required]", &super_kill);
+
                             }
                             ImGui::CustomEndChild();
                         }
@@ -527,7 +525,7 @@ namespace MainThread {
                 {
                     static int settingsTabsHor = 0;
 
-                    // Horizontal tabs at the top
+
                     ImGui::BeginGroup();
                     {
                         if (ImGui::TabsHor(settingsTabsHor == 0, "d", "DMA", "DMA Configuration", ImVec2(100, 50)))
@@ -541,108 +539,90 @@ namespace MainThread {
                     }
                     ImGui::EndGroup();
 
-                    // Main child area for the selected tab
                     ImGui::SetCursorPos(ImVec2(200, 50) + spacing);
-                    ImGui::BeginChild("SettingsChild", ImVec2(region.x - 200, region.y - 50) - spacing);
+
+
+                    if (ImGui::BeginChild("SettingsChild", ImVec2(region.x - 200, region.y - 50) - spacing))
                     {
                         switch (settingsTabsHor)
                         {
-                        case 0: // DMA Tab
+                        case 0:
                         {
                             ImGui::BeginGroup();
                             {
                                 ImGui::CustomBeginChild("Menu Options", ImVec2((region.x - (200 + spacing.x * 3)) / 2, 0));
                                 {
-
                                     ImGui::Keybind("Menu Toggle", &showhidekey, &b, false);
                                     ImGui::ColorEdit4("Menu Colors", color, picker_flags);
 
-                                    if (ImGui::Button("Display FPS",
-                                        ImVec2(ImGui::GetContentRegionMax().x - style->WindowPadding.x, 30)))
-                                    {
+                                    if (ImGui::Button("Display FPS", ImVec2(ImGui::GetContentRegionMax().x - style->WindowPadding.x, 30)))
                                         showFPS = !showFPS;
-                                    }
-                                    if (ImGui::Checkbox("Enable Memory Write[Ban Risk]", &memwrite))
+
+                                    ImGui::Checkbox("Enable Memory Write[Ban Risk]", &memwrite);
+
+                                    if (ImGui::Button("Exit", ImVec2(ImGui::GetContentRegionMax().x - style->WindowPadding.x, 30)))
                                     {
-                                        if (memwrite)
-                                           
-                                            ImGui::InsertNotification({ ImGuiToastType_Error, 1500,
-                                            "Please Keep in mind Memory writes can be dangerous \n" });
-                                    }
-                                    if (ImGui::Button("Exit", ImVec2(ImGui::GetContentRegionMax().x - style->WindowPadding.x, 30))) {
                                         g_authMonitorThread.request_stop();
                                         DMA.StopAllTasks();
                                         std::this_thread::sleep_for(std::chrono::milliseconds(10));
                                         TerminateProcess(GetCurrentProcess(), 0);
                                     }
-
-
-                                    ImGui::CustomEndChild();
-                                    ImGui::EndGroup();
-
-                                    ImGui::SameLine();
-
-                                    ImGui::BeginGroup();
-                                    {
-                                        ImGui::CustomBeginChild("Game Options",
-                                            ImVec2(region.x - (200 + spacing.x * 3), 0) / 2);
-                                        {
-                                            const char* overlayModes[] = { "[1PC]Transparent", "[2PC]Fuser" };
-                                            if (ImGui::Combo("Overlay Mode", &overlayMode, overlayModes,
-                                                IM_ARRAYSIZE(overlayModes)))
-                                            {
-                                                bool enableGlass = (overlayMode == 0);
-                                                EnableGlassTransparency(hwnd, enableGlass);
-                                            }
-
- 
-
-
-                                            int monitorCount = GetSystemMetrics(SM_CMONITORS);
-                                            if (monitorCount > 0)
-                                            {
-                                                static int currentMonitor = 0;
-                                                if (ImGui::Combo("Switch Monitors", &currentMonitor,
-                                                    [](void* data, int idx, const char** out_text)
-                                                    {
-                                                        static char buffer[64];
-                                                        snprintf(buffer, sizeof(buffer), "Monitor %d", idx + 1);
-                                                        *out_text = buffer;
-                                                        return true;
-                                                    },
-                                                    nullptr, monitorCount))
-                                                {
-                                                    set_monitor(currentMonitor, hwnd);
-                                                }
-                                            }
-
-                                             
-
-                                            if (ImGui::Button("Refresh Cheat",
-                                                ImVec2(ImGui::GetContentRegionMax().x - style->WindowPadding.x, 30)))
-                                            {
-                                                manual_refresh = true;
-
-                                                ImGui::InsertNotification({ ImGuiToastType_Error, 1500,
-                                                    "Queueing Refresh.. Please wait \n" });
-                                                text_add++;
-                                            }
-
-                                        }
-                                        ImGui::CustomEndChild();
-                                    }
-                                    ImGui::EndGroup();
-
-                                    break;
                                 }
+                                ImGui::CustomEndChild();
                             }
+                            ImGui::EndGroup();
+
+                            ImGui::SameLine();
+
+                            ImGui::BeginGroup();
+                            {
+                                ImGui::CustomBeginChild("Game Options", ImVec2(region.x - (200 + spacing.x * 3), 0) / 2);
+                                {
+                                    const char* overlayModes[] = { "[1PC]Transparent", "[2PC]Fuser" };
+                                    if (ImGui::Combo("Overlay Mode", &overlayMode, overlayModes, IM_ARRAYSIZE(overlayModes)))
+                                    {
+                                        bool enableGlass = (overlayMode == 0);
+                                        EnableGlassTransparency(hwnd, enableGlass);
+                                    }
+
+                                    ImGui::Checkbox("Enable Vsync", &vsync);
+
+                                    int monitorCount = GetSystemMetrics(SM_CMONITORS);
+                                    if (monitorCount > 0)
+                                    {
+                                        static int currentMonitor = 0;
+                                        if (ImGui::Combo("Switch Monitors", &currentMonitor,
+                                            [](void* data, int idx, const char** out_text)
+                                            {
+                                                static char buffer[64];
+                                                snprintf(buffer, sizeof(buffer), "Monitor %d", idx + 1);
+                                                *out_text = buffer;
+                                                return true;
+                                            }, nullptr, monitorCount))
+                                        {
+                                            set_monitor(currentMonitor, hwnd);
+                                        }
+                                    }
+
+                                    if (ImGui::Button("Refresh Cheat", ImVec2(ImGui::GetContentRegionMax().x - style->WindowPadding.x, 30)))
+                                    {
+                                        manual_refresh = true;
+                                        ImGui::InsertNotification({ ImGuiToastType_Error, 1500, "Queueing Refresh.. Please wait \n" });
+                                        text_add++;
+                                    }
+                                }
+                                ImGui::CustomEndChild();
+                            }
+                            ImGui::EndGroup();
+
+                            break;
+                        }
 
                         case 1:
                         {
                             ImGui::BeginGroup();
                             {
-                                ImGui::CustomBeginChild("KMBOX Options",
-                                    ImVec2((region.x - (300 + spacing.x * 3)) / 2, 0));
+                                ImGui::CustomBeginChild("KMBOXBPRO", ImVec2((region.x - (300 + spacing.x * 3)) / 2, 0));
                                 {
                                     const float buttonHeight = 20.f;
                                     ImVec2 buttonSize(ImGui::GetContentRegionMax().x - style->WindowPadding.x, 30);
@@ -652,13 +632,11 @@ namespace MainThread {
                                         if (!kmbox_connected)
                                         {
                                             std::thread([]() { attempt_kmbox_connection(); }).detach();
-                                            ImGui::InsertNotification({ ImGuiToastType_Info, 1500,
-                                                "Attempting KMBOX connection..." });
+                                            ImGui::InsertNotification({ ImGuiToastType_Info, 1500, "Attempting KMBOX connection..." });
                                         }
                                         else
                                         {
-                                            ImGui::InsertNotification({ ImGuiToastType_Warning, 1500,
-                                                "KMBOX is already connected." });
+                                            ImGui::InsertNotification({ ImGuiToastType_Warning, 1500, "KMBOX already connected." });
                                         }
                                     }
 
@@ -666,21 +644,85 @@ namespace MainThread {
                                     {
                                         if (kmbox_connected)
                                         {
-                                            ImGui::InsertNotification({ ImGuiToastType_Info, 1500,
-                                                "Moving Mouse..." });
-
+                                            ImGui::InsertNotification({ ImGuiToastType_Info, 1500, "Moving Mouse..." });
                                             std::thread([]()
                                                 {
                                                     kmBoxBMgr.km_move_auto(150, 250, 2);
                                                     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                                                    ImGui::InsertNotification({ ImGuiToastType_Success, 1500,
-                                                        "Mouse Movement Completed." });
+                                                    ImGui::InsertNotification({ ImGuiToastType_Success, 1500, "Mouse Movement Completed." });
                                                 }).detach();
                                         }
                                         else
                                         {
-                                            ImGui::InsertNotification({ ImGuiToastType_Error, 1500,
-                                                "KMBOX not connected!" });
+                                            ImGui::InsertNotification({ ImGuiToastType_Error, 1500, "KMBOX not connected!" });
+                                        }
+                                    }
+                                }
+                                ImGui::CustomEndChild();
+
+               
+
+                                ImGui::CustomBeginChild("KMBOXNET", ImVec2((region.x - (300 + spacing.x * 3)) / 2, 0));
+                                {
+                                  
+
+                                    static char input_ip[64] = {};
+                                    static char input_port[16] = {};
+                                    static char input_mac[32] = {};
+
+                                    static bool initialized = false;
+                                    if (!initialized)
+                                    {
+                                        initialized = true;
+                                        if (!kmbox_config_ip.empty())
+                                             strncpy_s(input_ip, kmbox_config_ip.c_str(), sizeof(input_ip));
+
+                                        if (kmbox_config_port > 0)
+                                            snprintf(input_port, sizeof(input_port), "%d", kmbox_config_port);
+
+                                        if (!kmbox_config_mac.empty())
+                                            strncpy_s(input_mac, kmbox_config_mac.c_str(), sizeof(input_mac));
+                                    }
+
+                                    const float buttonHeight = 10.f;
+                                    ImVec2 buttonSize(ImGui::GetContentRegionMax().x - style->WindowPadding.x, 30);
+
+                                    ImGui::InputTextEx("KMBOX IP", kmbox_config_ip.c_str(), input_ip, 64, ImVec2(ImGui::GetContentRegionMax().x - style->WindowPadding.x, 30), NULL);
+                                    ImGui::InputTextEx("KMBOX PORT", std::to_string(kmbox_config_port).c_str(), input_port, 16, ImVec2(ImGui::GetContentRegionMax().x - style->WindowPadding.x, 30), NULL);
+                                    ImGui::InputTextEx("KMBOX MAC", kmbox_config_mac.c_str(), input_mac, 32, ImVec2(ImGui::GetContentRegionMax().x - style->WindowPadding.x, 30), NULL);
+
+                                    if (ImGui::Button("Connect KMNET", buttonSize))
+                                    {
+                                        kmbox_config_ip = input_ip;
+                                        kmbox_config_port = atoi(input_port);
+                                        kmbox_config_mac = input_mac;
+
+                                        if (!kmbox_connected)
+                                        {
+                                            ImGui::InsertNotification({ ImGuiToastType_Info, 1500, "Attempting KMNET connection..." });
+                                            std::thread([]() { attempt_kmnet_connection(); }).detach();
+                                             
+                                        }
+                                        else
+                                        {
+                                            ImGui::InsertNotification({ ImGuiToastType_Warning, 1500, "KMBOX already connected." });
+                                        }
+                                    }
+                                    if (ImGui::Button("Test KMNET Mouse Movement", buttonSize))
+                                    {
+                                        if (kmbox_connected)
+                                        {
+                                            ImGui::InsertNotification({ ImGuiToastType_Info, 1500, "Moving Mouse..." });
+                                            std::thread([]()
+                                                {
+                                                    KmBoxNETMgr.Mouse.Move_Auto(150, 250, 3);
+                                                    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                                                    ImGui::InsertNotification({ ImGuiToastType_Success, 1500, "Mouse Movement Completed." });
+                                                }).detach();
+                                        }
+                                        else
+                                        {
+                                            ImGui::InsertNotification({ ImGuiToastType_Error, 1500, "KMNET not connected!" });
                                         }
                                     }
                                 }
@@ -692,17 +734,16 @@ namespace MainThread {
 
                         case 2:
                         {
-
                             static std::vector<std::string> configList;
                             static char configName[64] = "default";
                             static bool initialLoadDone = false;
 
-
-                            if (configList.empty()) {
+                            if (configList.empty())
+                            {
                                 configList = GetCheatConfigList();
 
-
-                                if (!initialLoadDone) {
+                                if (!initialLoadDone)
+                                {
                                     ImGui::InsertNotification({ ImGuiToastType_Success, 1500, "Loading configs" });
                                     text_add++;
                                     initialLoadDone = true;
@@ -713,23 +754,13 @@ namespace MainThread {
                             {
                                 ImGui::CustomBeginChild("Configs", ImGui::GetContentRegionAvail());
                                 {
-
-
-                                    ImGui::InputTextEx("ConfigName",
-                                        "Config Name",
-                                        configName,
-                                        IM_ARRAYSIZE(configName),
-                                        ImVec2(300, 25),
-                                        0);
+                                    ImGui::InputTextEx("ConfigName", "Config Name", configName, IM_ARRAYSIZE(configName), ImVec2(300, 25), 0);
 
                                     ImGui::Spacing();
 
                                     float availableWidth = ImGui::GetContentRegionAvail().x;
                                     float topButtonWidth = (availableWidth / 3.0f) - 10.0f;
-                                    float totalButtonWidth = topButtonWidth + ImGui::GetStyle().ItemSpacing.x;
                                     float topButtonHeight = 35.0f;
-
-                                    static bool showOverwritePopup = false;
 
                                     if (ImGui::Button("Create/Save", ImVec2(topButtonWidth, topButtonHeight)))
                                     {
@@ -737,7 +768,7 @@ namespace MainThread {
 
                                         if (strlen(configName) == 0)
                                         {
-                                            
+                                            // do nothing
                                         }
                                         else if (!exists && configList.size() >= 9)
                                         {
@@ -746,24 +777,15 @@ namespace MainThread {
                                         else
                                         {
                                             SaveCheatConfig(configName);
-
-                                            ImGui::InsertNotification({
-                                                ImGuiToastType_Success,
-                                                3500,
-                                                exists
-                                                    ? "Config Saved (Overwritten): %s"
-                                                    : "Config Created: %s",
-                                                configName
-                                                });
-
+                                            ImGui::InsertNotification({ ImGuiToastType_Success, 3500, exists ? "Config Saved (Overwritten)" : "Config Created" });
                                             configList = GetCheatConfigList();
                                             text_add++;
                                         }
                                     }
 
-                                   
+                                    if (ImGui::GetContentRegionAvail().x > topButtonWidth * 2)
+                                        ImGui::SameLine();
 
-                                    if (ImGui::GetContentRegionAvail().x > totalButtonWidth) ImGui::SameLine();
                                     if (ImGui::Button("Delete", ImVec2(topButtonWidth, topButtonHeight)))
                                     {
                                         if (strlen(configName) > 0)
@@ -787,48 +809,33 @@ namespace MainThread {
                                         }
                                     }
 
-                                    ImGui::SameLine();
+                                    if (ImGui::GetContentRegionAvail().x > topButtonWidth * 3)
+                                        ImGui::SameLine();
 
-                                   
-                                    ImGui::SameLine();
-
-                                    if (ImGui::GetContentRegionAvail().x > totalButtonWidth) ImGui::SameLine();
                                     if (ImGui::Button("Folder", ImVec2(topButtonWidth, topButtonHeight)))
                                     {
                                         ShellExecuteA(nullptr, "open", getCheatConfigDir().c_str(), nullptr, nullptr, SW_SHOWDEFAULT);
                                     }
 
-                                    if (ImGui::GetContentRegionAvail().x > totalButtonWidth) ImGui::SameLine();
-                                    if (ImGui::Button("Refresh", ImVec2(topButtonWidth, topButtonHeight)))
-                                    {
-                                        configList = GetCheatConfigList();
-                                    }
-
-
                                     ImGui::Spacing();
                                     ImGui::Separator();
                                     ImGui::Spacing();
 
-                                    float configButtonWidth = (availableWidth / 3.0f) - 10.0f;
-                                    float configButtonHeight = 60.0f;
-
                                     if (!configList.empty())
                                     {
-                                        for (size_t i = 0; i < configList.size(); i++)
+                                        for (size_t i = 0; i < configList.size(); ++i)
                                         {
-                                            if (ImGui::Button(configList[i].c_str(), ImVec2(configButtonWidth, configButtonHeight)))
+                                            if (ImGui::Button(configList[i].c_str(), ImVec2(topButtonWidth, 60.0f)))
                                             {
                                                 strcpy_s(configName, configList[i].c_str());
                                                 if (LoadCheatConfig(configList[i]))
                                                 {
-                                                    std::string successMsg = "Config Loaded: " + configList[i];
-                                                    ImGui::InsertNotification({ ImGuiToastType_Success, 3500, successMsg.c_str() });
+                                                    ImGui::InsertNotification({ ImGuiToastType_Success, 3500, ("Config Loaded: " + configList[i]).c_str() });
                                                     text_add++;
                                                 }
                                                 else
                                                 {
-                                                    std::string failMsg = "Failed to load config: " + configList[i];
-                                                    ImGui::InsertNotification({ ImGuiToastType_Error, 3500, failMsg.c_str() });
+                                                    ImGui::InsertNotification({ ImGuiToastType_Error, 3500, ("Failed to load config: " + configList[i]).c_str() });
                                                 }
                                             }
 
@@ -843,46 +850,24 @@ namespace MainThread {
                                 }
                                 ImGui::CustomEndChild();
                             }
+                            ImGui::EndGroup();
+
+                            break;
                         }
 
-                        ImGui::EndGroup();
-                        break;
+                            }
                         }
                         ImGui::EndChild();
+
                         }
+                        ImGui::End();
+
+                        ImGui::RenderNotifications();
+                        ImGui::EndFrame();
+
+                        return 0;
                     }
                 }
-                ImGui::End();
-
-               /*ImGui::Begin("Popupbox", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize);
-                {
-                    ImGui::CustomBeginChild("antiaim!!?!", ImVec2(300, 0), ImGuiWindowFlags_NoBringToFrontOnFocus);
-                    {
-                        static int value = 10;
-                        static float vertical = 50.f;
-                        static bool checkbox = false;
-
-                        ImGui::Checkbox("enable", &checkbox);
-
-                        if (checkbox) {
-                            ImGui::KnobInt("pitch", &value, 1, 100, "%d%%", NULL);
-
-                            ImGui::KnobFloat("yaw", &vertical, 0.f, 100.f, "%.2fF", NULL);
-                        }
-                    }
-                    ImGui::CustomEndChild();
-                }
-                ImGui::End();*/  
-
-                ImGui::PopStyleColor();
-
-
-                ImGui::RenderNotifications();
-
-                ImGui::EndFrame();
-
-                return 0;
             }
         }
-    }
-}
+

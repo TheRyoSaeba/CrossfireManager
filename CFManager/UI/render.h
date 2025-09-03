@@ -67,6 +67,7 @@ namespace font
     inline ImFont* calibri_regular = nullptr;
 	inline  ImFont* tahoma_bold = nullptr;
 	inline ImFont* icomoon[50];
+    inline ImFont* chinese = nullptr;
 }
 
 namespace texture
@@ -258,9 +259,10 @@ inline void attempt_kmbox_connection() {
         ImGui::InsertNotification({ ImGuiToastType_Error, 2500, "Unknown KMBOX error." });
         kmbox_connected = false;
         return;
-    }
+    }\
 
     HANDLE hSerial = kmBoxBMgr.getSerialHandle();
+    
     if (hSerial == INVALID_HANDLE_VALUE) {
         ImGui::InsertNotification({ ImGuiToastType_Error, 2500, "Invalid serial handle." });
         kmbox_connected = false;
@@ -276,7 +278,7 @@ inline void attempt_kmbox_connection() {
     }
 
     if (device_type == "MAKCU") {
-        ImGui::InsertNotification({ ImGuiToastType_Success, 2500, "MAKCU Device Connected." });
+        ImGui::InsertNotification({ ImGuiToastType_Success, 2500, "MAKCU Device Connected. Please use V3.2 ONLY !" });
         kmbox_connected = true;
     }
     else if (device_type == "KMBOX") {
@@ -289,6 +291,40 @@ inline void attempt_kmbox_connection() {
         kmbox_connected = false;
     }
 }
+
+
+static unsigned char s_kmnet_lcd_image[128 * 160] =
+{
+
+};
+
+inline void attempt_kmnet_connection()
+{
+    if (!kmbox_config_ip.empty() && kmbox_config_port > 0 && !kmbox_config_mac.empty())
+    {
+        int code = KmBoxNETMgr.InitDevice(
+            kmbox_config_ip,
+            static_cast<WORD>(kmbox_config_port),
+            kmbox_config_mac
+        );
+
+        if (code != 0)
+        {
+            kmbox_connected = false;
+            char buf[64];
+            ImGui::InsertNotification({ ImGuiToastType_Error, 2500, "KMNET Connection Failed" });
+            return;
+        }
+
+
+        kmbox_connected = true;
+        ImGui::InsertNotification({ ImGuiToastType_Success, 1500, "KMNET connected." });
+    }
+    
+}
+
+
+
 
  
 
@@ -308,19 +344,18 @@ inline void  set_monitor(int index, HWND hwnd) {
 
    inline void StartKeyCheck(HWND hwnd)
    {
+       static bool wasDownLastFrame = false;
 
-      bool isDown = (GetAsyncKeyState(showhidekey) & 0x8000) || mem.GetKeyboard()->IsKeyDown(showhidekey);
+       bool isDown = (GetAsyncKeyState(showhidekey) & 0x8000) || mem.GetKeyboard()->IsKeyDown(showhidekey);
 
-           if (isDown)
-            {
-                
-                showMenu = !showMenu;
-              set_mouse_passthrough(hwnd);
-                      
-            }
-            
-              
-               }
+       if (isDown && !wasDownLastFrame)
+       {
+           showMenu = !showMenu;
+           set_mouse_passthrough(hwnd);
+       }
+
+       wasDownLastFrame = isDown;
+   }
 
 inline OverlayInitData SetupImGuiAndWindow()
 {
@@ -371,6 +406,25 @@ inline OverlayInitData SetupImGuiAndWindow()
     return data;
 }
 
+inline std::string CharToUtf8(const std::string& asciiStr)
+{
+
+    int wideCharLength = MultiByteToWideChar(CP_ACP, 0, asciiStr.c_str(), -1, NULL, 0);
+    if (wideCharLength == 0)
+        return "";
+
+    std::wstring wideStr(wideCharLength, 0);
+    MultiByteToWideChar(CP_ACP, 0, asciiStr.c_str(), -1, &wideStr[0], wideCharLength);
+
+    int utf8Length = WideCharToMultiByte(CP_UTF8, 0, wideStr.c_str(), -1, NULL, 0, NULL, NULL);
+    if (utf8Length == 0)
+        return "";
+
+    std::string utf8Str(utf8Length, 0);
+    WideCharToMultiByte(CP_UTF8, 0, wideStr.c_str(), -1, &utf8Str[0], utf8Length, NULL, NULL);
+
+    return utf8Str;
+}
 inline  void  InitMenuFontsAndTextures()
 {
     ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -391,8 +445,10 @@ inline  void  InitMenuFontsAndTextures()
         font::icomoon[i] = io.Fonts->AddFontFromMemoryTTF(icomoon, sizeof(icomoon), i, &cfg, io.Fonts->GetGlyphRangesCyrillic());
 
     font::tahoma_bold = io.Fonts->AddFontFromMemoryTTF(tahoma_bold, sizeof(tahoma_bold), 12.f, &cfg, io.Fonts->GetGlyphRangesCyrillic());
+    font::chinese = io.Fonts->AddFontFromMemoryTTF(NotoSans_Regular,sizeof(NotoSans_Regular),12.f, &cfg, io.Fonts->GetGlyphRangesChineseFull());
+   
 
-
+    
     bool show_demo_window = true;
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);

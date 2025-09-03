@@ -134,40 +134,30 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 {
 	if (!DMA_INITIALIZED)
 	{
-		//LOG("inizializing...\n");
+
 	reinit:
-		LPCSTR args[] = { "", "-device", "fpga://algo=0", "-norefresh", "", "", "" };
-		DWORD argc = 4;
-		if (debug)
-		{
-			args[argc++] = const_cast<LPCSTR>("-v");
-			args[argc++] = const_cast<LPCSTR>("-printf");
+		LPCSTR args[10];   
+		DWORD argc = 0;
+
+		args[argc++] = "-norefresh";   
+		args[argc++] = "-device";
+		args[argc++] = "fpga://algo=0";
+		args[argc++] = "";
+
+		if (memMap) {
+			auto temp_path = std::filesystem::temp_directory_path();
+			std::string path = temp_path.string() + "\\mmap.txt";
+
+			bool dumped = std::filesystem::exists(path) || this->DumpMemoryMap(debug);
+			if (dumped) {
+				args[argc++] = "-memmap";
+				args[argc++] = path.c_str();
+			}
 		}
 
-		std::string path = "";
-		if (memMap)
-		{
-			auto temp_path = std::filesystem::temp_directory_path();
-			path = (temp_path.string() + "\\mmap.txt");
-			bool dumped = false;
-			if (!std::filesystem::exists(path))
-				dumped = this->DumpMemoryMap(debug);
-			else
-				dumped = true;
-			//LOG("dumping memory map to file...\n");
-			if (!dumped)
-			{
-				//LOG("[!] ERROR: Could not dump memory map!\n");
-				//LOG("Defaulting to no memory map!\n");
-			}
-			else
-			{
-				//LOG("Dumped memory map!\n");
-
-				//Add the memory map to the arguments and increase arg count.
-				args[argc++] = const_cast<LPSTR>("-memmap");
-				args[argc++] = const_cast<LPSTR>(path.c_str());
-			}
+		if (debug) {
+			args[argc++] = "-v";
+			args[argc++] = "-printf";
 		}
 		this->vHandle = VMMDLL_Initialize(argc, args);
 		if (!this->vHandle)
@@ -175,10 +165,10 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 			if (memMap)
 			{
 				memMap = false;
-				//LOG("[!] Initialization failed with Memory map? Try without MMap\n");
+
 				goto reinit;
 			}
-			//LOG("[!] Initialization failed! Is the DMA in use or disconnected?\n");
+
 			return false;
 		}
 
@@ -245,46 +235,28 @@ bool Memory::Init(std::string process_name, bool memMap, bool debug)
 	return true;
 }
 
+
+
+
 void Memory::full_refresh()
 {
 	 
-		manual_refresh = !manual_refresh;
-		VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_REFRESH_ALL, 1);
-		LOG_SUCCESS("Refrshed");
-		 
-		 
-
+	manual_refresh = false;
+	VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_REFRESH_ALL, 1);
 	 
+		  
 }
 
 void Memory::Refreshing() {
-	std::jthread{ [](std::stop_token stoken) {
-		constexpr auto baseInterval = 10ms;
-		constexpr int mediumCycles = (4min) / baseInterval;
-
-		int cycles = 0;
-
-		while (!stoken.stop_requested()) {
-			if (mem.vHandle) {
-				VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_REFRESH_FREQ_MEM, 1);
-				VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_REFRESH_FREQ_TLB, 1);
-
-				if (++cycles >= mediumCycles) {
-					VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_REFRESH_FREQ_MEDIUM, 1);
-					cycles = 0;
-				}
-			}
-
-			std::this_thread::sleep_for(baseInterval);
-		}
-	} }.detach();
+	VMMDLL_ConfigSet(this->vHandle, VMMDLL_OPT_REFRESH_FREQ_MEM_PARTIAL, 1);
+	VMMDLL_ConfigSet(this->vHandle, VMMDLL_OPT_REFRESH_FREQ_TLB_PARTIAL, 1);
 }
+
 void Memory::process_time()
 {
-	 
-	//Memory::full_refresh();
-	//VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_CONFIG_PROCCACHE_TICKS_PARTIAL, 300);
-	//VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_CONFIG_PROCCACHE_TICKS_TOTAL, 6000);
+
+	VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_CONFIG_PROCCACHE_TICKS_PARTIAL, 6000);
+	VMMDLL_ConfigSet(mem.vHandle, VMMDLL_OPT_CONFIG_PROCCACHE_TICKS_TOTAL, 13000);
 
 }
 
@@ -611,6 +583,25 @@ bool Memory::cachePML4()
 
 	return success;
 }
+
+
+bool Memory::RawDumpToFile(uintptr_t base,
+	size_t size,
+	DWORD pidWithFlag,
+	const std::string& path)
+{
+	std::vector<uint8_t> buf(size);
+	// Read the entire region via DMA
+	if (!Read(base, buf.data(), size, pidWithFlag)) {
+		return false;
+	}
+	// Write it out
+	std::ofstream out(path, std::ios::binary);
+	if (!out) return false;
+	out.write(reinterpret_cast<char*>(buf.data()), buf.size());
+	return true;
+}
+
 bool Memory::DumpMemory(uintptr_t address, std::string path)
 {
 	LOG("[!] Memory dumping currently does not rebuild the IAT table, imports will be missing from the dump.\n");
@@ -862,6 +853,7 @@ uintptr_t Memory::FindWritableFunctionPointer(const std::string& moduleName)
 
 VMMDLL_SCATTER_HANDLE Memory::CreateScatterHandle() const
 {
+	std::lock_guard<std::mutex> lock(vmmMutex);
 	const VMMDLL_SCATTER_HANDLE ScatterHandle = VMMDLL_Scatter_Initialize(this->vHandle, current_process.PID, VMMDLL_FLAG_NOCACHE |VMMDLL_FLAG_NOPAGING);
 	if (!ScatterHandle)
 		LOG("[!] Failed to create scatter handle\n");
@@ -870,6 +862,7 @@ VMMDLL_SCATTER_HANDLE Memory::CreateScatterHandle() const
 
 VMMDLL_SCATTER_HANDLE Memory::CreateScatterHandle(int pid) const
 {
+	std::lock_guard<std::mutex> lock(vmmMutex);
 	const VMMDLL_SCATTER_HANDLE ScatterHandle = VMMDLL_Scatter_Initialize(this->vHandle, pid, VMMDLL_FLAG_NOCACHE);
 	if (!ScatterHandle)
 		LOG("[!] Failed to create scatter handle\n");
@@ -878,11 +871,13 @@ VMMDLL_SCATTER_HANDLE Memory::CreateScatterHandle(int pid) const
 
 void Memory::CloseScatterHandle(VMMDLL_SCATTER_HANDLE handle)
 {
+	std::lock_guard<std::mutex> lock(vmmMutex);
 	VMMDLL_Scatter_CloseHandle(handle);
 }
 
 void Memory::AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size)
 {
+	std::lock_guard<std::mutex> lock(vmmMutex);
 	if (!VMMDLL_Scatter_PrepareEx(handle, address, size, static_cast<PBYTE>(buffer), NULL))
 	{
 		LOG("[!] Failed to prepare scatter read at 0x%p\n", address);
@@ -891,6 +886,7 @@ void Memory::AddScatterReadRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t addres
 
 void Memory::AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t address, void* buffer, size_t size)
 {
+	std::lock_guard<std::mutex> lock(vmmMutex);
 	if (!VMMDLL_Scatter_PrepareWrite(handle, address, static_cast<PBYTE>(buffer), size))
 	{
 		LOG("[!] Failed to prepare scatter write at 0x%p\n", address);
@@ -899,6 +895,7 @@ void Memory::AddScatterWriteRequest(VMMDLL_SCATTER_HANDLE handle, uint64_t addre
 
 void Memory::ExecuteReadScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
 {
+	std::lock_guard<std::mutex> lock(vmmMutex);
 	if (pid == 0)
 		pid = current_process.PID;
 
@@ -915,6 +912,7 @@ void Memory::ExecuteReadScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
 
 void Memory::ExecuteWriteScatter(VMMDLL_SCATTER_HANDLE handle, int pid)
 {
+	std::lock_guard<std::mutex> lock(vmmMutex);
 	if (pid == 0)
 		pid = current_process.PID;
 

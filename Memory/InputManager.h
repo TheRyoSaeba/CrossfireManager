@@ -25,3 +25,16 @@ public:
 	void UpdateKeys();
 	bool IsKeyDown(uint32_t virtual_key_code);
 };
+
+struct r_mouse
+{
+	bool  Init();
+	POINT Pos();
+	void  LDown();
+	void  LUp();
+
+	uintptr_t curPtrVar = 0, qBase = 0, qTail = 0;
+	static DWORD pidKernel;
+};
+extern r_mouse rMouse;
+

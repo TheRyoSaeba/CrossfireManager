@@ -1,8 +1,11 @@
 
 
 #pragma once
+#pragma execution_character_set( "utf-8" )
 #include "ESP.h"
 #include <render.h>
+#include <locale>
+#include <codecvt>
 
  
  
@@ -62,19 +65,30 @@ void ESP::Render(Memory& mem, std::shared_ptr<ESP::Snapshot> snapshot, ImDrawLis
                 if (fov == 0 || distanceMeters > fov) continue;
 
 
-                std::string playerName = "Player"; 
+                std::string playerName = "Player";
 
-                if (enemy.Name[0] != '\0' && std::isprint(enemy.Name[0])) {
-                    playerName = std::string(enemy.Name, strnlen(enemy.Name, sizeof(enemy.Name)));
+                if (enemy.Name[0] != '\0')
+                {
+                     
+                    std::string raw(enemy.Name,
+                        strnlen(enemy.Name, sizeof(enemy.Name)));
 
                     
-                    playerName.erase(std::remove_if(playerName.begin(), playerName.end(), [](char c) {
-                        return !(std::isprint(static_cast<unsigned char>(c)));
-                        }), playerName.end());
+                    raw.erase(std::remove_if(raw.begin(), raw.end(),
+                        [](unsigned char c)
+                        { return (c < 0x20 && c != '\n' && c != '\r') || c == 0x7F; }),
+                        raw.end());
 
-                    if (playerName.empty())
-                        playerName = "Player";
+                    
+                    bool hasNonAscii = std::any_of(raw.begin(), raw.end(),
+                        [](unsigned char c) { return c & 0x80; });
+
+                    playerName = hasNonAscii ? CharToUtf8(raw.c_str())    
+                        : raw.empty() ? "Player"
+                        : raw;
                 }
+
+
 
 
                 RectData rect;
@@ -156,8 +170,7 @@ void ESP::DrawHeadCircle(const RectData& rect, ImDrawList* draw, const LT_DRAWPR
     }
 
 }
- void ESP::DrawCornerBox(int x, int y, int w, int h, float borderPx, RGBA color) {
-    ImDrawList* draw = ImGui::GetForegroundDrawList();
+ void ESP::DrawCornerBox(int x, int y, int w, int h, float borderPx, RGBA color, ImDrawList* draw) {
     ImU32 col = IM_COL32(color.R, color.G, color.B, color.A);
 
     float lineW = (w / 8.0f);
@@ -189,7 +202,7 @@ void ESP::DrawBoxESP(const RectData& rect, ImDrawList* draw, float scaleFactor, 
         break;
 
     case 1:
-        DrawCornerBox(rect.x, rect.y, rect.w, rect.h, boxtk * scaleFactor, rect.color);
+        DrawCornerBox(rect.x, rect.y, rect.w, rect.h, boxtk * scaleFactor, rect.color,draw);
         break;
 
     case 2:
@@ -355,14 +368,31 @@ void ESP::DrawHealthBar(const RectData& rect, float health, ImDrawList* draw)
 
 void ESP::DrawNameESP(const RectData& rect, ImDrawList* draw)
 {
-    if (rect.playerName.empty())
-        return;
-
-    if (Flogs[2]) {
+    if (Flogs[2] && !rect.playerName.empty()) {
         ImVec2 textSize = ImGui::CalcTextSize(rect.playerName.c_str());
+
+        
+        bool hasNonAscii = std::any_of(rect.playerName.begin(), rect.playerName.end(), [](unsigned char c) {
+            return c & 0x80;
+            });
+
+        if (hasNonAscii) {
+            if (font::chinese)
+                ImGui::PushFont(font::chinese);
+            else
+                ImGui::PushFont(ImGui::GetFont());
+        } else {
+            if (font::calibri_bold)
+                ImGui::PushFont(font::calibri_bold);
+            else
+                ImGui::PushFont(ImGui::GetFont());
+        }
+
         draw->AddText(ImVec2(rect.x + (rect.w - textSize.x) * 0.5f, rect.y - textSize.y - 2.0f),
-            IM_COL32(g_NameColor.R, g_NameColor.G, g_NameColor.B, g_NameColor.A)
-            , rect.playerName.c_str());
+            IM_COL32(g_NameColor.R, g_NameColor.G, g_NameColor.B, g_NameColor.A),
+            rect.playerName.c_str());
+
+        ImGui::PopFont();
     }
 }
 
@@ -390,18 +420,23 @@ static void DrawAllBones( ImDrawList* draw,Memory& mem,uintptr_t hObject, const 
         {1, 25}, {25, 26}, {26, 27}
     };
 
+    // Build bone index map once for O(1) lookup instead of repeated std::find
+    int indexMap[64];
+    for (int i = 0; i < 64; ++i) indexMap[i] = -1;
+    for (size_t i = 0; i < boneIDs.size(); ++i) {
+        int id = boneIDs[i];
+        if (id >= 0 && id < 64) indexMap[id] = static_cast<int>(i);
+    }
+
     for (auto& bp : bonePairs)
     {
         int boneA = bp.first;
         int boneB = bp.second;
 
-        auto itA = std::find(boneIDs.begin(), boneIDs.end(), boneA);
-        if (itA == boneIDs.end()) continue;
-        size_t idxA = std::distance(boneIDs.begin(), itA);
-
-        auto itB = std::find(boneIDs.begin(), boneIDs.end(), boneB);
-        if (itB == boneIDs.end()) continue;
-        size_t idxB = std::distance(boneIDs.begin(), itB);
+        int idxA = (boneA >= 0 && boneA < 64) ? indexMap[boneA] : -1;
+        if (idxA < 0) continue;
+        int idxB = (boneB >= 0 && boneB < 64) ? indexMap[boneB] : -1;
+        if (idxB < 0) continue;
 
         D3DXVECTOR3 posA = positions[idxA];
         D3DXVECTOR3 posB = positions[idxB];
@@ -435,6 +470,12 @@ void ESP::DrawBones(Memory& mem, const ESP::Snapshot& snapshot, ImDrawList* draw
     {
         if (enemy.IsDead) continue;
         if (Filterteams && enemy.Team == snapshot.localTeam) continue;
+
+        float dx = enemy.AbsPos.x - snapshot.localAbsPos.x;
+        float dy = enemy.AbsPos.y - snapshot.localAbsPos.y;
+        float dz = enemy.AbsPos.z - snapshot.localAbsPos.z;
+        float distanceMeters = sqrtf(dx * dx + dy * dy + dz * dz) / 100.0f;
+        if (fov == 0 || distanceMeters > fov) continue;
 
         RGBA color = (enemy.Team == snapshot.localTeam) ? g_AllyColor : g_HeadColor;
 

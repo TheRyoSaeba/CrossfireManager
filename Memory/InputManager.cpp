@@ -1,64 +1,64 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "InputManager.h"
 #include "Registry.h"
 #include "Memory.h"
- 
+#include <iostream>
+#include <atlbase.h> 
+
+DWORD r_mouse::pidKernel = 0;
+r_mouse rMouse;
 bool c_keys::InitKeyboard()
 {
 	std::string win = registry.QueryValue("HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\CurrentBuild", e_registry_type::sz);
-	if (win.empty()) {
-	 
-		return false;
-	}
-	 
-
 	int Winver = 0;
-	try {
+	if (!win.empty())
 		Winver = std::stoi(win);
-		 
-	}
-	catch (const std::exception& e) {
-	 
+	else
 		return false;
-	}
-
 	std::string ubr = registry.QueryValue("HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\UBR", e_registry_type::dword);
-	if (ubr.empty()) {
-		 
-		return false;
-	}
- 
-
 	int Ubr = 0;
-	try {
+	if (!ubr.empty())
 		Ubr = std::stoi(ubr);
-	 
-	}
-	catch (const std::exception& e) {
-		 
+	else
 		return false;
-	}
 
+	rMouse.curPtrVar = 0;
 	this->win_logon_pid = mem.GetPidFromName("winlogon.exe");
+
 	if (Winver > 22000)
 	{
 		auto pids = mem.GetPidListFromName("csrss.exe");
 		for (size_t i = 0; i < pids.size(); i++)
 		{
 			auto pid = pids[i];
-			uintptr_t tmp = VMMDLL_ProcessGetModuleBaseU(mem.vHandle, pid, const_cast<LPSTR>("win32ksgd.sys"));
-			uintptr_t g_session_global_slots;
-			if (!tmp || (Winver >= 26100 && Ubr >= 2605)) {
-				tmp = VMMDLL_ProcessGetModuleBaseU(mem.vHandle, pid, const_cast<LPSTR>("win32k.sys"));
-				g_session_global_slots = tmp + 0x82538;
-				if (Ubr >= 3037) {
-					g_session_global_slots = tmp + 0x82530;
+
+			PVMMDLL_MAP_MODULEENTRY win32k_module_info;
+			if (!VMMDLL_Map_GetModuleFromNameW(mem.vHandle, pid, const_cast<LPWSTR>(L"win32ksgd.sys"), &win32k_module_info, VMMDLL_MODULE_FLAG_NORMAL))
+			{
+				if (!VMMDLL_Map_GetModuleFromNameW(mem.vHandle, pid, const_cast<LPWSTR>(L"win32k.sys"), &win32k_module_info, VMMDLL_MODULE_FLAG_NORMAL))
+				{
+					LOG("failed to get module win32k info\n");
+					return false;
 				}
 			}
-			else {
-				g_session_global_slots = tmp + 0x3110;
-			}
+			 
 
+			uintptr_t win32k_base = win32k_module_info->vaBase;
+			size_t win32k_size = win32k_module_info->cbImageSize;
+			//win32ksgd
+			auto g_session_ptr = mem.FindSignature("48 8B 05 ? ? ? ? 48 8B 04 C8", win32k_base, win32k_base + win32k_size, pid);
+			if (!g_session_ptr)
+			{
+				//win32k
+				g_session_ptr = mem.FindSignature("48 8B 05 ? ? ? ? FF C9", win32k_base, win32k_base + win32k_size, pid);
+				if (!g_session_ptr)
+				{
+					LOG("failed to find g_session_global_slots\n");
+					return false;
+				}
+			}
+			int relative = mem.Read<int>(g_session_ptr + 3, pid);
+			uintptr_t g_session_global_slots = g_session_ptr + 7 + relative;
 			uintptr_t user_session_state = 0;
 			for (int i = 0; i < 4; i++)
 			{
@@ -67,15 +67,34 @@ bool c_keys::InitKeyboard()
 					break;
 			}
 
-			if (Winver >= 26100 && Ubr >= 2605) {
-				gafAsyncKeyStateExport = user_session_state + 0x3830;
-			} else if (Winver >= 26100) {
-				gafAsyncKeyStateExport = user_session_state + (Ubr >= 2314 ? 0x3828 : 0x3820);
-			} else if (Winver >= 22631 && Ubr >= 3810) {
-				gafAsyncKeyStateExport = user_session_state + 0x36A8;
-			} else {
-				gafAsyncKeyStateExport = user_session_state + 0x3690;
+			PVMMDLL_MAP_MODULEENTRY win32kbase_module_info;
+			if (!VMMDLL_Map_GetModuleFromNameW(mem.vHandle, pid, const_cast<LPWSTR>(L"win32kbase.sys"), &win32kbase_module_info, VMMDLL_MODULE_FLAG_NORMAL))
+			{
+				LOG("failed to get module win32kbase info\n");
+				return false;
 			}
+			uintptr_t win32kbase_base = win32kbase_module_info->vaBase;
+			size_t win32kbase_size = win32kbase_module_info->cbImageSize;
+
+			
+
+			//Unsure if this sig will work on all versions. (sig is from PostUpdateKeyStateEvent function. seems to exist in both older version and the new version of win32kbase that I have checked)
+			uintptr_t ptr = mem.FindSignature("48 8D 90 ? ? ? ? E8 ? ? ? ? 0F 57 C0", win32kbase_base, win32kbase_base + win32kbase_size, pid);
+			uint32_t session_offset = 0x0;
+			if (ptr)
+			{
+				session_offset = mem.Read<uint32_t>(ptr + 3, pid);
+				gafAsyncKeyStateExport = user_session_state + session_offset;
+
+			
+
+			}
+			else
+			{
+				LOG("failed to find offset for gafAyncKeyStateExport\n");
+				return false;
+			}
+
 
 			if (gafAsyncKeyStateExport > 0x7FFFFFFFFFFF) break;
 		}
@@ -164,3 +183,93 @@ bool c_keys::IsKeyDown(uint32_t virtual_key_code)
 	}
 	return state_bitmap[(virtual_key_code * 2 / 8)] & 1 << virtual_key_code % 4 * 2;
 }
+
+bool r_mouse::Init()
+{
+	// Use the same kernel-mode PID you already rely on
+	pidKernel = mem.GetPidFromName("winlogon.exe") |
+		VMMDLL_PID_PROCESS_WITH_KERNELMEMORY;
+
+	// --------------------------------------------------------------------
+	// 1. First try the export table
+	// --------------------------------------------------------------------
+	PVMMDLL_MAP_EAT eatMap{};
+	if (VMMDLL_Map_GetEATU(mem.vHandle,
+		pidKernel,
+		const_cast<LPSTR>("win32kbase.sys"),
+		&eatMap) &&
+		eatMap->dwVersion == VMMDLL_MAP_EAT_VERSION)
+	{
+		for (DWORD i = 0; i < eatMap->cMap; ++i)
+			if (strcmp(eatMap->pMap[i].uszFunction, "gptCursorAsync") == 0)
+				curPtrVar = eatMap->pMap[i].vaFunction;
+		VMMDLL_MemFree(eatMap);
+	}
+
+	// --------------------------------------------------------------------
+	// 2. If stripped, fall back to the PDB (handles 'already loaded' case)
+	// --------------------------------------------------------------------
+	if (curPtrVar == 0)
+	{
+		PVMMDLL_MAP_MODULEENTRY modInfo{};
+		if (!VMMDLL_Map_GetModuleFromNameW(mem.vHandle,
+			pidKernel,
+			L"win32kbase.sys",
+			&modInfo,
+			VMMDLL_MODULE_FLAG_NORMAL))
+		{
+			LOG("InitMouse – failed to map win32kbase.sys\n");
+			return false;
+		}
+
+		char pdbName[MAX_PATH]{};
+		BOOL ok = VMMDLL_PdbLoad(mem.vHandle,
+			pidKernel,
+			modInfo->vaBase,
+			pdbName);
+
+		if (!ok && GetLastError() != ERROR_ALREADY_EXISTS)
+		{
+			LOG("InitMouse – PDB load failed (GLE 0x%X)\n", GetLastError());
+			VMMDLL_MemFree(modInfo);
+			return false;
+		}
+
+		if (!VMMDLL_PdbSymbolAddress(mem.vHandle,
+			pdbName,
+			const_cast<LPSTR>("gptCursorAsync"),
+			&curPtrVar))
+		{
+			LOG("InitMouse – symbol not found in PDB\n");
+			VMMDLL_MemFree(modInfo);
+			return false;
+		}
+		VMMDLL_MemFree(modInfo);
+	}
+
+	// --------------------------------------------------------------------
+	// 3. Sanity check
+	// --------------------------------------------------------------------
+	if (curPtrVar <= 0x7FFFFFFFFFFF)
+	{
+		LOG("InitMouse – curPtrVar looks wrong: 0x%llx\n", curPtrVar);
+		curPtrVar = 0;
+		return false;
+	}
+
+	LOG("InitMouse – gptCursorAsync @ 0x%llx\n", curPtrVar);
+	return true;
+}
+
+
+
+
+
+ 
+
+ 
+
+
+
+ 
+

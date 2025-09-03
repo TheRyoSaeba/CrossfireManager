@@ -203,16 +203,28 @@ void ESP::RenderRadar(Memory& mem, std::shared_ptr<ESP::Snapshot> snapshot, ImDr
                 }
 
                 
-                if (draw_enemy_names && enemy.Name[0] != '\0') {
-                    ImVec2 textSize = ImGui::CalcTextSize(enemy.Name);
+                if (draw_enemy_names && enemy.Name[0] != '\0')
+                {
+                    std::string utf8Name = CharToUtf8(enemy.Name);
 
+                    bool isChinese = std::any_of(utf8Name.begin(), utf8Name.end(),
+                        [](unsigned char c) { return c & 0x80; });
+
+                    if (isChinese && font::chinese)
+                        ImGui::PushFont(font::chinese);
+
+                    ImVec2 textSz = ImGui::CalcTextSize(utf8Name.c_str());
                     drawList->AddText(
-                        ImVec2(blipPos.x + 5.0f + 2, blipPos.y - textSize.y / 2),
+                        ImVec2(blipPos.x + 7.0f, blipPos.y - textSz.y * 0.5f),
                         IM_COL32(255, 255, 255, 255),
-                        enemy.Name
-                    );
+                        utf8Name.c_str());
+
+                    if (isChinese && font::chinese)
+                        ImGui::PopFont();
                 }
-            }
+
+                }
+ 
 
              
 

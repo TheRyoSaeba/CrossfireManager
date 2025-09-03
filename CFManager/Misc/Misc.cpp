@@ -1,5 +1,7 @@
-﻿#include "Misc.h"
-
+#include "Misc.h"
+#include <render.h>
+#include <atomic>
+#include "../Aimbot/AimHelper.h"
 
 using namespace std::chrono_literals;
 
@@ -8,9 +10,42 @@ static std::vector<bool> backupOne(MAX_TEXTURES);
 static std::vector<bool> backupTwo(MAX_TEXTURES);
 static std::vector<bool> backupThree(MAX_TEXTURES);
 static bool backupDone = false;
+static std::atomic<bool> refresh_in_progress{ false };
 
+void MiscCheats(Memory& mem) {
+    static bool refresh_latched = false;
 
+    if (enableAimbot)  DMA.AddTask(Aimbot::Run);
+    else               DMA.StopTask(typeid(Aimbot::Run).name());
 
+    if (manual_refresh) {
+        if (!refresh_latched) {
+            refresh_latched = true;
+            std::thread([] {
+                Memory::full_refresh(); 
+                }).detach();
+        }
+    }
+    else {
+        refresh_latched = false;
+    }
+
+    if (memwrite) {
+        if (camera_hacks) DMA.AddTask(SetCameraPerspective, selectedPerspective, camOffset);
+        else              DMA.StopTask(typeid(SetCameraPerspective).name());
+
+        if (super_kill)   DMA.AddTask(SuperKill, mem);
+        else              DMA.StopTask(typeid(SuperKill).name());
+
+        if (fast_knives)  DMA.AddTask(noreload, mem);
+        else              DMA.StopTask(typeid(noreload).name());
+    }
+    else {
+        DMA.StopTask(typeid(SetCameraPerspective).name());
+        DMA.StopTask(typeid(SuperKill).name());
+        DMA.StopTask(typeid(noreload).name());
+    }
+}
     
     void SuperKill(Memory& mem) {
         static std::unordered_map<uintptr_t, D3DXVECTOR3> headBackup;
@@ -80,7 +115,6 @@ static bool backupDone = false;
             patched = false;
         }
     }
-
  
  
 
@@ -400,53 +434,21 @@ void GodMode(Memory& mem) {
 
 
 void noreload(Memory& mem) {
-    static bool patched = false;
-
-   
+     
     auto snapshot = g_cacheManager.GetSnapshot();
-    bool inGame = snapshot->m_clientShell.inGame();
+    if (!snapshot || !snapshot->m_clientShell.CPlayerClntBase)
+        return;
 
-    struct AnimPatch {
-        uintptr_t offset;
-        const char* value;
-    };
 
-    static std::vector<AnimPatch> noreload = {
-        { aSelect,    "fire" },
-        { aPostFire,  "asdf" },
-        { aReload,    "fire" },
-    };
+     
+    uintptr_t clntBase = reinterpret_cast<uintptr_t>(snapshot->m_clientShell.CPlayerClntBase);
 
-    static std::vector<AnimPatch> restore = {
-        { aSelect,    "select" },
-        { aPostFire,  "fire" },
-        { aReload,    "reload" },
-    };
-
-   
-    if (inGame && !patched) {
-        LOG("[NoReload] Activating no-reload\n");
-
-        for (const auto& p : noreload) {
-            for (int x = 0; x < 3; x++)
-            {
-                mem.Write(CFSHELL + p.offset, (void*)p.value, strlen(p.value) + 4);
-            }
-            
-        }
-
-        patched = true;
-    }
-    
-    else if (!inGame && patched) {
-        LOG("[NoReload] Restoring normal animations\n");
-
-        for (const auto& p : restore) {
-            mem.Write(CFSHELL + p.offset, (void*)p.value, strlen(p.value) + 4);
-        }
-
-        patched = false;
-    }
+ 
+    const float noRecoilValue = 0.0f;
+    const float noRecoilValue2 = 0.0f;
+ 
+    mem.Write<float>(clntBase + offsetof(KLASSES::pPlayerClntBase, Recoil1), noRecoilValue);
+    mem.Write<float>(clntBase + offsetof(KLASSES::pPlayerClntBase, Recoil2), noRecoilValue);
 }
 
 
@@ -542,7 +544,7 @@ void BugDamage(Memory& mem) {
 
 }
  
-
+ 
  
  void ShowFPS(ImDrawList* drawList)
  {
@@ -560,44 +562,134 @@ void BugDamage(Memory& mem) {
  }
 
 
-static void TryBoneArray()
+ void printplayernames()
+ {
+    
+     auto snapshot = g_cacheManager.GetSnapshot();
+     for (const auto& e : snapshot->enemies)
+     {
+        
+        // if (Filterteams && e.Team == snapshot->localTeam) continue;
+
+         std::string raw(e.Name, strnlen(e.Name, sizeof(e.Name)));
+         raw.erase(std::remove_if(raw.begin(), raw.end(),
+             [](unsigned char c) { return (c < 0x20 && c != '\n' && c != '\r') || c == 0x7F; }),
+             raw.end());
+
+         bool nonAscii = std::any_of(raw.begin(), raw.end(), [](unsigned char c) { return c & 0x80; });
+         std::string name = nonAscii ? CharToUtf8(raw.c_str()) : (raw.empty() ? "Player" : raw);
+
+         printf("%s\n", name.c_str());
+     }
+ }
+
+
+  void TryBoneArray(Memory& mem)
+ {
+     static bool hasRun = false;
+     if (hasRun) return;
+     hasRun = true;
+     uintptr_t hObject = 0;
+     for (int i = 0; i < MAX_PLAYERS; ++i)
+     {
+         uintptr_t pPlayerPtr = mem.Read<uintptr_t>(offs::LT_SHELL + ENTITY_START + size_t(i) * 8);
+         if (!pPlayerPtr || !mem.IsValidPointer(pPlayerPtr)) continue;
+
+         KLASSES::pPlayer p = mem.Read<KLASSES::pPlayer>(pPlayerPtr);
+         if (p.hObject)
+         {
+             hObject = reinterpret_cast<uintptr_t>(p.hObject);
+             break;
+         }
+     }
+     if (!hObject || !mem.IsValidPointer(hObject)) return;
+
+     constexpr uintptr_t startOffset = 0x2900;
+     constexpr uintptr_t endOffset = 0x2AB0;
+     constexpr int boneIndex = 6;
+
+     std::unordered_set<uintptr_t> seenPtrs;
+
+     for (uintptr_t offset = startOffset; offset < endOffset; offset += sizeof(uintptr_t))
+     {
+         uintptr_t bonePtr = mem.Read<uintptr_t>(hObject + offset);
+         if (!bonePtr || !mem.IsValidPointer(bonePtr) || seenPtrs.count(bonePtr)) continue;
+
+         seenPtrs.insert(bonePtr);
+
+         D3DXMATRIX mat = mem.Read<D3DXMATRIX>(bonePtr + sizeof(D3DXMATRIX) * boneIndex);
+
+         float x = mat._14, y = mat._24, z = mat._34;
+         if (fabsf(x) > 10000.f || fabsf(y) > 10000.f || fabsf(z) > 10000.f) continue;
+
+         printf("[BONE] Offset 0x%04llX → Bone[6] Pos = { %.2f, %.2f, %.2f }\n",
+             static_cast<unsigned long long>(offset), x, y, z);
+     }
+
+     printf("TryBoneArray finished.\n");
+ }
+
+  void TryNoRecoil(Memory& mem)
+  {
+      static bool hasRun = false;
+      if (hasRun) return;
+
+      auto snapshot = g_cacheManager.GetSnapshot();
+      if (!snapshot || !snapshot->m_clientShell.CPlayerClntBase)
+          return;
+
+      uintptr_t clntBase = reinterpret_cast<uintptr_t>(snapshot->m_clientShell.CPlayerClntBase);
+
+      for (uintptr_t off = 0x700; off < 0x900; off += sizeof(uint32_t)) {
+          mem.Write<uint32_t>(clntBase + off, 0u);
+      }
+
+      printf("[NR/NS] Zeroed 4-byte steps in [0x500..0x900) for CPlayerClntBase @ 0x%p\n",
+          reinterpret_cast<void*>(clntBase));
+
+      hasRun = true;
+  }
+
+
+
+void messagetry()
 {
-    static bool hasRun = false;
-    if (hasRun) return;
-    hasRun = true;
-
-    auto snapshot = g_cacheManager.GetSnapshot();
-    if (!snapshot || !snapshot->LocalPlayer.hObject)
-        return;
-
-    uintptr_t hObject = reinterpret_cast<uintptr_t>(snapshot->LocalPlayer.hObject);
-
-    constexpr uintptr_t startOffset = 0x2900;
-    constexpr uintptr_t endOffset = 0x2AB0;
-    constexpr int boneIndex = 6;
-
-    std::unordered_set<uintptr_t> seenPtrs;
-
-    for (uintptr_t offset = startOffset; offset < endOffset; offset += sizeof(uintptr_t))
+    std::string process = "Cshell_x64.dll";
+    auto target = mem.GetImportTableAddress("Sleep", process, process);
+    auto caves = mem.shellcode.find_all_codecave(18, process);
+    if (caves.empty())
     {
-        uintptr_t bonePtr = mem.Read<uintptr_t>(hObject + offset);
-        if (!bonePtr || seenPtrs.count(bonePtr)) continue;
-
-        seenPtrs.insert(bonePtr);
-
-        D3DXMATRIX mat = mem.Read<D3DXMATRIX>(bonePtr + sizeof(D3DXMATRIX) * boneIndex);
-
-        float x = mat._14;
-        float y = mat._24;
-        float z = mat._34;
-
-        if (abs(x) > 10000.f || abs(y) > 10000.f || abs(z) > 10000.f)
-            continue;
-
-        printf("[BONE] Offset 0x%04llX → Bone[6] Pos = { %.2f, %.2f, %.2f }\n",
-            offset, x, y, z);
+        LOG_ERROR("No codecave found.");
+        return;
     }
 
-    printf("TryBoneArray finished.\n");
-}
 
+
+    uint64_t cave = caves[0];
+    uint64_t flag = cave + 16;
+
+    uint8_t zero = 0;
+    mem.Write(flag, &zero, 1);
+
+    std::vector<uint8_t> stub = {
+        0xC6, 0x05, 0, 0, 0, 0, 1,
+        0x48, 0xB8,
+        0,0,0,0,0,0,0,0,
+        0xFF, 0xE0
+    };
+
+    *reinterpret_cast<int32_t*>(&stub[2]) = static_cast<int32_t>(flag - (cave + 7));
+    *reinterpret_cast<uint64_t*>(&stub[8]) = mem.Read<uint64_t>(target);
+
+    mem.Write(cave, stub.data(), stub.size());
+    mem.shellcode.call_function((void*)cave, (void*)target, process);
+
+    Sleep(100);
+
+    uint8_t result = 0;
+    mem.Read(flag, &result, 1);
+    if (result == 1)
+        LOG_SUCCESS("Stub executed via call_function!");
+    else
+        LOG_ERROR("Stub did not execute.");
+}

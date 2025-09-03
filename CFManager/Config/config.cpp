@@ -9,7 +9,6 @@
 #include <cfloat>              
 namespace fs = std::filesystem;
 
-namespace fs = std::filesystem;
 
 
 using namespace KLASSES;
@@ -21,6 +20,7 @@ void SaveColors(json& j) {
     j["g_ESPLineColor"] = { g_ESPLineColor.R, g_ESPLineColor.G, g_ESPLineColor.B, g_ESPLineColor.A };
     j["g_NameColor"] = { g_NameColor.R, g_NameColor.G, g_NameColor.B, g_NameColor.A };
     j["g_HeadColor"] = { g_HeadColor.R, g_HeadColor.G, g_HeadColor.B, g_HeadColor.A };
+    j["g_FOVColor"] = { g_FOVColor.R, g_FOVColor.G, g_FOVColor.B, g_FOVColor.A };
 }
 
 void LoadColors(const json& j) {
@@ -43,6 +43,10 @@ void LoadColors(const json& j) {
     if (j.contains("g_HeadColor")) {
         auto arr = j["g_HeadColor"];
         g_HeadColor = { arr[0], arr[1], arr[2], arr[3] };
+    }
+    if (j.contains("g_FOVColor")) {
+        auto arr = j["g_FOVColor"];
+        g_FOVColor = { arr[0], arr[1], arr[2], arr[3] };
     }
 }
 
@@ -124,6 +128,7 @@ std::string toHex(uintptr_t value) {
     j["color"] = { color[0], color[1], color[2], color[3] };
     j["memwrite"] = memwrite;
     j["draw_radar"] = draw_radar;
+    j["vsync"] = vsync;
     j["draw_enemies_as_arrows"] = draw_enemies_as_arrows;
     j["draw_enemy_names"] = draw_enemy_names;
     j["radar_size_factor"] = radar_size_factor;
@@ -169,6 +174,9 @@ std::string toHex(uintptr_t value) {
     j["hptk"] = hptk;
     j["hdtk"] = hdtk;
     j["bonetk"] = bonetk;
+    j["kmbox_config_ip"] = kmbox_config_ip;
+    j["kmbox_config_port"] = kmbox_config_port;
+    j["kmbox_config_mac"] = kmbox_config_mac;
     j["crosshair_notify"] = crosshair_notify;
 
 
@@ -213,6 +221,9 @@ std::string toHex(uintptr_t value) {
   void DeserializeCheatConfig(const json& j) {
 
     showhidekey = j.value("showhidekey", showhidekey);
+    kmbox_config_ip = j.value("kmbox_config_ip",kmbox_config_ip);
+    kmbox_config_port = j.value("kmbox_config_port", kmbox_config_port);
+    kmbox_config_mac = j.value("kmbox_config_mac", kmbox_config_mac);
     memwrite = j.value("memwrite", memwrite);
     Dcheckbox = j.value("Dcheckbox", Dcheckbox);
     enableAimbot = j.value("enableAimbot", enableAimbot);
@@ -223,15 +234,17 @@ std::string toHex(uintptr_t value) {
     MemoryMode = j.value("MemoryMode", MemoryMode);
     AimSpeed = j.value("AimSpeed", AimSpeed);
     smoothing = j.value("smoothing", smoothing);
-    smoothing = std::clamp(smoothing, 1, 10);
+    smoothing = std::clamp(smoothing, 1, 25);
     perWeaponConfig = j.value("perWeaponConfig", perWeaponConfig);
     AimSpeed = std::clamp(AimSpeed, 0.01f, 0.1f);
     AimPosition = j.value("AimPosition", AimPosition);
+    vsync = j.value("vsync", vsync);
     MaxAimDistance = j.value("MaxAimDistance", MaxAimDistance);
     MaxAimDistance = std::clamp(MaxAimDistance, 0.0f, 1000.0f);
     firstHotkey = j.value("firstHotkey", firstHotkey);
     selectedAimDevice = j.value("selectedAimDevice", selectedAimDevice);
     TargetSwitch = j.value("TargetSwitch", TargetSwitch);
+    TargetSwitch = std::clamp(TargetSwitch, 0, 2);
     ToggleorHold = j.value("ToggleorHold", ToggleorHold);
     Headcheckbox = j.value("Headcheckbox", Headcheckbox);
     Healthcheckbox = j.value("Healthcheckbox", Healthcheckbox);

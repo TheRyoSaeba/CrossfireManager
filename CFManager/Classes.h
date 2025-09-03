@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #pragma warning(push)
 #pragma warning(disable: VCR001)
@@ -43,7 +43,7 @@
 #include "../Memory/Memory.h"
 #include "Shellcode.h"
 #include "offsets.h"
-
+#include <limits>
 using namespace DirectX;
 namespace KLASSES {
 
@@ -67,66 +67,24 @@ namespace KLASSES {
     public:
         union
         {
-            DEFINE_MEMBER_0(obj*, hObject);
-            DEFINE_MEMBER_N(0x0008, int8_t, ClientID);
-            DEFINE_MEMBER_N(0x0009, int8_t, Team);
-            DEFINE_MEMBER_N(0x000A, char, Name[14]);
-            DEFINE_MEMBER_N(0x0018, pCharacterFx*, characFX);
-            DEFINE_MEMBER_N(0x0020, int32_t, ScoreBoard);
-            DEFINE_MEMBER_N(0x0024, int32_t, BOTorNOT);
-            DEFINE_MEMBER_N(0x0028, int32_t, C4);
-            DEFINE_MEMBER_N(0x002C, int32_t, Host);
-            DEFINE_MEMBER_N(0x0030, int64_t, Rank);
-            DEFINE_MEMBER_N(0x0038, int64_t, IDNumber);
-            DEFINE_MEMBER_N(0x0040, int32_t, Spectator);
-            DEFINE_MEMBER_N(0x0044, int32_t, Health);
-            DEFINE_MEMBER_N(0x0048, int8_t, Kills);
-            DEFINE_MEMBER_N(0x0049, int8_t, Deaths);
-            DEFINE_MEMBER_N(0x004C, int8_t, ModelType);
-            DEFINE_MEMBER_N(0x004D, char, pad_004D[3219]);
-            DEFINE_MEMBER_N(0x0CE0, int16_t, ACE);
-            DEFINE_MEMBER_N(0x0CE2, char, pad_0CE2[86]);
-            DEFINE_MEMBER_N(0x0D38, char, padding[0x90]);
+          
+            DEFINE_MEMBER_N(0x0008, obj*, hObject);
+            DEFINE_MEMBER_N(0x00010, int8_t, ClientID);
+            DEFINE_MEMBER_N(0x00011, int8_t, Team);
+            DEFINE_MEMBER_N(0x0012, char, Name[14]);
+            DEFINE_MEMBER_N(0x0020, pCharacterFx*, characFX);
+            DEFINE_MEMBER_N(0x0028, int32_t, ScoreBoard);
+            DEFINE_MEMBER_N(0x002C, int32_t, BOTorNOT);
+            DEFINE_MEMBER_N(0x0030, int32_t, C4);
+            DEFINE_MEMBER_N(0x0034, int32_t, Host);
+            DEFINE_MEMBER_N(0x0038, int64_t, Rank);
+            DEFINE_MEMBER_N(0x0040, int64_t, IDNumber);
+            DEFINE_MEMBER_N(0x0048, int32_t, Spectator);
+            DEFINE_MEMBER_N(0x004C, int32_t, Health);
+            DEFINE_MEMBER_N(0x0050, int8_t, Kills);
+            DEFINE_MEMBER_N(0x0051, int8_t, Deaths);
         };
     };
-
-    class CCharacterHitBox
-    {
-        public:
-    
-          static  bool EnlargeDims(Memory& m, CCharacterHitBox* h, float s) {
-                if (!h) return false;
-
-                uintptr_t f = CFSHELL + 0x15C44D0;
-
-                std::vector<uint8_t> b = {
-                    0x48, 0x83, 0xEC, 0x28,
-                    0x48, 0xB9, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0xF3, 0x0F, 0x10, 0x05, 0x24, 0x00, 0x00, 0x00,
-                    0x48, 0xB8, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0xFF, 0xD0,
-                    0x48, 0x83, 0xC4, 0x28,
-                    0xC3,
-                    0, 0, 0, 0
-                };
-
-                memcpy(&b[6], &h, sizeof(h));
-                memcpy(&b[26], &f, sizeof(f));
-                memcpy(&b[b.size() - 4], &s, sizeof(s));
-
-                uint64_t v = m.shellcode.find_codecave(b.size(), "crossfire.exe", "crossfire.exe");
-                if (!v) return false;
-
-                if (!m.Write(v, b.data(), b.size())) return false;
-
-                uintptr_t t = m.GetImportTableAddress("timeGetTime", "crossfire.exe", "WINMM.dll");
-                if (!t) return false;
-
-                return m.shellcode.call_function((void*)t, (void*)v, "crossfire.exe");
-            }
-
-    };
-
 
     class pCharacterFx
     {
@@ -134,9 +92,9 @@ namespace KLASSES {
         union
         {
             DEFINE_MEMBER_0(void*, ObjectFX);
-            DEFINE_MEMBER_N(0x06D0, int8_t, isDead);
+            DEFINE_MEMBER_N(0x0760, int8_t, isDead);
             DEFINE_MEMBER_N(0x0708, CCharacterHitBox*, pCharacterHitBox);
-            DEFINE_MEMBER_N(0x11518, CWeapon*, WeaponOnHand);
+            DEFINE_MEMBER_N(0x17BD0, CWeapon*, WeaponOnHand);
         };
     };
 
@@ -148,8 +106,8 @@ namespace KLASSES {
     public:
         union {
             DEFINE_MEMBER_0(int16_t, WeaponID);
-            DEFINE_MEMBER_N(0x0002, int16_t, WeaponClass);
-            DEFINE_MEMBER_N(0x0010, char, WeaponName[28]);
+            DEFINE_MEMBER_N(0x0002, WeaponType, WeaponClass);
+            DEFINE_MEMBER_N(0x0010, char, WeaponName[33]);
             DEFINE_MEMBER_N(0x0170, float, Range);
             DEFINE_MEMBER_N(0x04AC, float, KnifeRate1);
             DEFINE_MEMBER_N(0x04DC, float, knifebigrate1);
@@ -247,7 +205,7 @@ namespace KLASSES {
         {
              
             DEFINE_MEMBER_N(0x0098, int32_t, Perspective);
-            DEFINE_MEMBER_N(0x00B0, D3DXVECTOR3, camerapos);
+            DEFINE_MEMBER_N(0x0010, D3DXVECTOR3, camerapos);
 
         };
 
@@ -259,31 +217,48 @@ namespace KLASSES {
     public:
         union
         {
-            
+            char Name[14];
             DEFINE_MEMBER_N(0x0040, pCamera*, CCamera);
             DEFINE_MEMBER_N(0x0088, void*, CWorldPropsClnt);
-            DEFINE_MEMBER_N(0x0090, pPlayerClntBase*, CPlayerClntBase);
-            DEFINE_MEMBER_N(0x0098, int32_t, ingame);
+            DEFINE_MEMBER_N(0x0460, pPlayerClntBase*, CPlayerClntBase);
+            DEFINE_MEMBER_N(0x04F4, int32_t, ingame);
+            DEFINE_MEMBER_N(0x04DC, int32_t, Local_ID);
             DEFINE_MEMBER_N(0x00B0, void*, CLTClient);
-            DEFINE_MEMBER_N(0x0110, void*, CameraInstance);
+            DEFINE_MEMBER_N(0x0190, void*, CameraInstance);
             DEFINE_MEMBER_N(0x02B0, void*, CGameUI);
-            DEFINE_MEMBER_N(0x02A0, char, NickName[16]);
             DEFINE_MEMBER_N(0x02DC, int32_t, Health);
-            DEFINE_MEMBER_N(0x02E0, void*, EntityStart);
+            DEFINE_MEMBER_N(0x010, void*, EntityStart);
         };
 
-        pPlayer GetPlayerByIndex(int index)
-        {
-            uintptr_t ENTITY_BASE = offs::LT_SHELL + offs::dwCPlayerStart;
-            uintptr_t playerAddress = ENTITY_BASE + (index * offs::dwCPlayerSize);
-            pPlayer player = mem.Read<pPlayer>(playerAddress);
-            return player;
+        inline uintptr_t PlayerPtrAddr(int i) {
+          
+          
+            return offs::LT_SHELL + ENTITY_START + size_t(i) * 8;
         }
 
+        KLASSES::pPlayer GetPlayerByIndex(int i) {
+			 
+            uintptr_t p = mem.Read<uintptr_t>(PlayerPtrAddr(i));
+            if (!p) return {};
+            
+            return mem.Read<KLASSES::pPlayer>(p);
+        }
         pPlayer GetLocalPlayer(Memory& memRef)
         {
-            int idx = memRef.Read<int>(offs::LT_SHELL + offs::MYOFFSET);
-            return GetPlayerByIndex(idx);
+           
+            int localId = this->Local_ID;
+            if (localId < 0)
+                return {};
+            for (int i = 0; i < MAX_PLAYERS; ++i)
+            {
+                KLASSES::pPlayer pl = GetPlayerByIndex(i);
+                if (!pl.hObject) continue;
+
+                if (pl.ClientID == localId)
+                    return pl;
+            }
+
+            return {};
         }
 
         bool inGame()
@@ -317,11 +292,8 @@ namespace KLASSES {
         {
             DEFINE_MEMBER_N(0x0008, D3DXVECTOR3, foot);
             DEFINE_MEMBER_N(0x0014, D3DXVECTOR3, Head);
-            DEFINE_MEMBER_N(0x0020, char, pad_0020[404]);
-            DEFINE_MEMBER_N(0x01B4, D3DXVECTOR3, AbsolutePosition);
-            DEFINE_MEMBER_N(0x01C0, char, pad_01C0[10096]);
-            DEFINE_MEMBER_N(0x2930, pBoneArray*, BoneArray);
-            DEFINE_MEMBER_N(0x2938, char, pad_2938[800]);
+            DEFINE_MEMBER_N(0x01BC, D3DXVECTOR3, AbsolutePosition);
+            DEFINE_MEMBER_N(0x2978, pBoneArray*, BoneArray);
         };
 
         static D3DXVECTOR3 GetFoot(Memory& mem, uintptr_t hObject) {
@@ -371,19 +343,15 @@ namespace KLASSES {
     public:
         union
         {
-            DEFINE_MEMBER_0(char, pad_0000[992]);
             DEFINE_MEMBER_N(0x03E0, int32_t, Ammo);
             DEFINE_MEMBER_N(0x03E4, int32_t, MaxAmmo);
-            DEFINE_MEMBER_N(0x03E8, char, pad_03E8[24]);
             DEFINE_MEMBER_N(0x0400, void*, PlayerViewManager);
-            DEFINE_MEMBER_N(0x0408, char, pad_0408[568]);
-            DEFINE_MEMBER_N(0x0640, float, Yaw);
-            DEFINE_MEMBER_N(0x0644, char, pad_0644[4]);
-            DEFINE_MEMBER_N(0x0648, float, Pitch);
-            DEFINE_MEMBER_N(0x064C, float, Roll);
-            DEFINE_MEMBER_N(0x0650, char, pad_0650[1960]);
+            DEFINE_MEMBER_N(0x1E28, float, Yaw2);
+            DEFINE_MEMBER_N(0x1EA0, float, Pitch);
+            DEFINE_MEMBER_N(0x1EA4, float, Yaw);
+            DEFINE_MEMBER_N(0x13B8, float, Recoil1);
+            DEFINE_MEMBER_N(0x1C08, float, Recoil2);
             DEFINE_MEMBER_N(0x0DF8, D3DXVECTOR2, ViewAngles);
-            DEFINE_MEMBER_N(0x0E00, char, pad_0E00[1600]);
         };
     };
 
@@ -430,6 +398,47 @@ namespace KLASSES {
 
 
     };
+
+
+
+
+    class BasicPlayerinfo
+    {
+    public:
+        char pad_0000[4]; //0x0000
+        float MovementSpeed; //0x0004
+        float MovementWalkRate; //0x0008
+        float MovementDuckWalkRate; //0x000C
+        float MovementSideMoveRate; //0x0010
+        float MovementFrontBackRunAnimationRate; //0x0014
+        float MovementLeftRightWalkAnimationRate; //0x0018
+        float MovementAcceleration; //0x001C
+        float MovementLRWalkAnimRate; //0x0020
+        float MovementAccelation; //0x0024
+        float MovementFriction; //0x0028
+        float JumpTime; //0x002C
+        float JumpVelocity; //0x0030
+        float JumpLandedWaitTime; //0x0034
+        float JumpLandedNoJumpTimeRate; //0x0038
+        float JumpRepeatPenaltyMoveRate; //0x003C
+        float JumpRepeatPenaltyHeightRate; //0x0040
+        float JumpLandedMovePenaltyTimeRate; //0x0044
+        float JumpLandedMovePenaltyMoveRate; //0x0048
+        char N00004AAF[40]; //0x004C
+        float DamagePenaltyTime; //0x0074
+        float DamagePenaltyMoveRate; //0x0078
+        float C4Plant; //0x007C
+        float C4DEFUSE; //0x0080
+        float MaxCanDefuseDistance; //0x0084
+        float CharacterHiddenAlpha; //0x0088
+        float CharacterHiddenWalkAlpha; //0x008C
+        char pad_0100[152]; //0x0100
+
+    }; //Size: 0x0198
+
+
+
+
 
     inline bool EngineW2S(const LT_DRAWPRIM& drawPrim, D3DXVECTOR3* InOut) {
         D3DXVECTOR3 vScreen;

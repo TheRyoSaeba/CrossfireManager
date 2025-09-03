@@ -47,7 +47,7 @@ struct AimContext {
 namespace ESP {
     void Render(Memory& mem, std::shared_ptr<ESP::Snapshot> snapshot, ImDrawList* draw);
     void DrawHeadCircle(const RectData& rect, ImDrawList* draw, const LT_DRAWPRIM& drawPrim);
-    void DrawCornerBox(int x, int y, int w, int h, float borderPx, RGBA color);
+    void DrawCornerBox(int x, int y, int w, int h, float borderPx, RGBA color,ImDrawList* draw);
     void DrawBoxESP(const RectData& rect, ImDrawList* draw, float scaleFactor, int esptype);
     void DrawTraceline(const RectData& rect, const ESP::Snapshot& snapshot, ImDrawList* draw);
     void DrawHealthBar(const RectData& rect, float health, ImDrawList* draw);

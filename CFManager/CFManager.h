@@ -21,6 +21,7 @@
 
  const std::string GAME_NAME = xorstr_("Crossfire.exe");
  const std::string SHELLNAME = xorstr_("CShell_x64.dll");
+ inline  std::string LOADER_TITLE = xorstr_("MakimuraLoader");
 
  
  inline auto logFailure = []() {
@@ -48,7 +49,7 @@
 		 m_tasks[id] = std::jthread([task](std::stop_token stopToken) {
 			 while (!stopToken.stop_requested()) {
 				 task();
-				 std::this_thread::sleep_for(std::chrono::milliseconds(3));
+				 std::this_thread::sleep_for(std::chrono::milliseconds(8));
 			 }
 			 });
 	 }

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../ESP/ESP.h"
 #include <cmath>
 #include <unordered_set>
@@ -28,24 +28,29 @@
  
 //'M-HEBdown
 using namespace std::chrono_literals;
- 
+void MiscCheats(Memory& mem);
 void BugDamage();
 void TryBoneArray();
 void SetCameraPerspective(int32_t perspectiveMode, D3DXVECTOR3 camOffset);
 void SuperKill(Memory& mem);
 void FastKnives(Memory& mem);
+void MultiplySpeed(Memory& mem);
 void ShowFPS(ImDrawList* drawList);
 void ShootThroughWall(Memory& mem);
 void Runcheats();
+void printplayernames();
 void GodMode(Memory& mem);
 void noreload(Memory& mem);
+void TryNoRecoil(Memory& mem);
+void messagetry();
 enum class WallPenState {
     Uninitialized,
     Patched,
     Restored
 };
 void initMiscCheats();
- void Superkill2();
+void Superkill2();
+void ModifyPlayerMovement(Memory& mem);
 struct KnifeRates {
     float rates1[4];
     float rates2[4];

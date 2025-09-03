@@ -4,14 +4,30 @@
 #include "render.h"
 #include "Authentication/auth.hpp"
 #include "../region_header.h"
- 
+#include "Misc/Misc.h"
+#include "UI/Logging.h"
+#include <eh.h>
+
 
 CacheManager g_cacheManager;
 
+
+
+void refreshMemory()
+{
+    while (true)
+    {
+        mem.Refreshing();
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    }
+}
+
 int main()
 {
-    std::string title = xorstr_("MakimuraLoader");
-    SetConsoleTitleA(title.c_str());
+	VerifyLogin();
+    if (std::strcmp(kRegionVersion, "china") == 0) LOADER_TITLE += "CN";
+    else if (std::strcmp(kRegionVersion, "NA") == 0) LOADER_TITLE += "NA";
+    SetConsoleTitleA(LOADER_TITLE.c_str());
 
     LOG_INFO("Connecting to DMA....\n");
 init:
@@ -80,14 +96,22 @@ init:
         exit(EXIT_FAILURE);
     }
 
-    LOG_SUCCESS("Cheat Initialized... Loading Menu..\n");
+    LOG_SUCCESS("Cheat Initialized... Please Wait for  Menu..\n");
+
+    mem.full_refresh();
+
+    std::thread(refreshMemory).detach();
 
     g_cacheManager.StartUpdateThread(mem);
 
-     
-     
-    mem.Refreshing();
-
+    std::thread([] {
+        using namespace std::chrono_literals;
+        for (;;) {
+            MiscCheats(mem);  
+            std::this_thread::sleep_for(15ms);
+        }
+        }).detach();
+   
     MainThread::Render_Loop();
     return 0;
 }

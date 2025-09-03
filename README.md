@@ -1,6 +1,7 @@
- [![Discord](https://github.com/user-attachments/assets/4417118b-ea28-4527-b553-6016630e2cc7)](https://discordapp.com/users/makimura.dev)
+[![Discord](https://github.com/user-attachments/assets/4417118b-ea28-4527-b553-6016630e2cc7)](https://discordapp.com/users/makimura.dev)
  
- 
+ Will be updating for CFNA FREE DM me on Discord if interested in other versions BR/VN :makimura.dev
+
 
 ## Features
 - Visuals
@@ -10,7 +11,6 @@
     - Head
     - Health Bar
     - Name
-    - Distance
     - FOV
    - Bones
    - See Ghost( Yes it's technically just ESP again but it counts)
@@ -47,10 +47,5 @@
 - Planned( if i get lucky)
   - Triggerbot(Soon™) if i get visible check intersectsegment or whatever with shellcode idk
   - Fixing and adding more Misc hacks, most of the people i've seen use detours ...
-    
 
-
- - Credits
- - tutorials from MPGH
-
- 
+ <img width="1331" height="1019" alt="Screenshot 2025-04-09 060922" src="https://github.com/user-attachments/assets/3ec17fda-8f1c-478e-a4ce-e12abcfa5d5d" />

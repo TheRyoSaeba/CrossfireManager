@@ -26,6 +26,7 @@ public:
     }
 
     void Update(Memory& mem) {
+        m_isUpdating.store(true, std::memory_order_release);
         auto targetTime = m_lastCycle + m_minCycle;
 
         {
@@ -48,6 +49,7 @@ public:
             std::this_thread::sleep_until(targetTime);
         }
         m_lastCycle = now;
+        m_isUpdating.store(false, std::memory_order_release);
     }
 
     std::shared_ptr<ESP::Snapshot> GetSnapshot() const {
@@ -58,20 +60,25 @@ public:
         if (m_running.load()) return;
         m_running.store(true);
         m_updateThread = std::thread([this, &mem]() {
-            SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
-
+            // Keep update thread lower priority so it doesn't starve the UI thread
+            SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
             while (m_running.load()) {
-                auto start = std::chrono::steady_clock::now();
-
-                this->Update(mem);
-
-                auto end = std::chrono::steady_clock::now();
-                auto updateTime = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-                int sleepTime = std::max(1, 9 - static_cast<int>(updateTime));
-                std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
+                try {
+                    // Update() internally paces to m_minCycle using sleep_until
+                    this->Update(mem);
+                }
+                catch (const std::exception& e) {
+                    Logger::Error(std::string("Exception in Cache update thread: ") + e.what());
+                }
+                catch (...) {
+                    Logger::Error("Unknown exception in Cache update thread; continuing");
+                }
             }
             });
+    }
+
+    bool IsUpdating() const {
+        return m_isUpdating.load(std::memory_order_acquire);
     }
 
     void StopUpdateThread() {
@@ -91,6 +98,7 @@ private:
     std::chrono::milliseconds m_targetCycle;
     std::atomic<bool> m_running;
     std::thread m_updateThread;
+    std::atomic<bool> m_isUpdating{ false };
 };
 
 class CacheManager;  

@@ -1,6 +1,7 @@
 #pragma once
 #include "../ESP/ESP.h"
 #include "render.h"
+#include "Logging.h"
 #include <Memory.h>
 #include <thread>
 #include "../Misc/Misc.h"
@@ -38,114 +39,83 @@ namespace MainThread {
             if (done)
                 break;
 
-            if (g_ResizeWidth != 0 && g_ResizeHeight != 0) {
-                CleanupRenderTarget();
-                g_pSwapChain->ResizeBuffers(0, g_ResizeWidth, g_ResizeHeight,
-                    DXGI_FORMAT_UNKNOWN, 0);
-                g_ResizeWidth = g_ResizeHeight = 0;
-                CreateRenderTarget();
-            }
+            try {
+                if (g_ResizeWidth != 0 && g_ResizeHeight != 0) {
+                    CleanupRenderTarget();
+                    g_pSwapChain->ResizeBuffers(0, g_ResizeWidth, g_ResizeHeight,
+                        DXGI_FORMAT_UNKNOWN, 0);
+                    g_ResizeWidth = g_ResizeHeight = 0;
+                    CreateRenderTarget();
+                }
 
-            ImGui_ImplDX11_NewFrame();
-            ImGui_ImplWin32_NewFrame();
-            ImGui::NewFrame();
+                ImGui_ImplDX11_NewFrame();
+                ImGui_ImplWin32_NewFrame();
+                ImGui::NewFrame();
 
-            struct FrameContext {
-                std::shared_ptr<ESP::Snapshot> snapshot;
-                ImDrawList* drawList;
-                bool inGame;
+               // DMA.AddTask(StartKeyCheck, overlay.hwnd);
+               
 
-                FrameContext()
-                    : snapshot(g_cacheManager.GetSnapshot()),
-                    drawList(ImGui::GetForegroundDrawList()),
-                    inGame(snapshot&& snapshot->m_clientShell.inGame()) {}
-            };
+                struct FrameContext {
+                    std::shared_ptr<ESP::Snapshot> snapshot;
+                    ImDrawList* drawList;
+                    bool inGame;
 
-            FrameContext ctx;
+                    FrameContext()
+                        : snapshot(g_cacheManager.GetSnapshot()),
+                        drawList(nullptr),
+                        inGame(snapshot&& snapshot->m_clientShell.inGame()) {}
+                };
 
-            if (ctx.snapshot) {
-                if (ctx.inGame) {
+                FrameContext ctx;
+                
+                ctx.drawList = ImGui::GetForegroundDrawList();
 
-                    if (Dcheckbox || Bonecheckbox) {
-                        static auto nextESPFrame = std::chrono::steady_clock::now();
-                        auto now = std::chrono::steady_clock::now();
+                if (ctx.snapshot) {
+                    if (ctx.inGame) {
 
-                        if (now >= nextESPFrame) {
+                        if (Dcheckbox || Bonecheckbox) {
                             Render(mem, ctx.snapshot, ctx.drawList);
-                            nextESPFrame = now + 2ms;
                         }
-                    }
 
+                        if (showFOVCircle) {
+                            ESP::DrawFOVCircle(ctx.drawList, ctx.snapshot->drawPrim, AimFov,
+                                IM_COL32(g_FOVColor.R, g_FOVColor.G, g_FOVColor.B, g_FOVColor.A));
+                        }
 
-                    if (showFOVCircle) {
-                        ESP::DrawFOVCircle(ctx.drawList, ctx.snapshot->drawPrim, AimFov,
-                            IM_COL32(31, 255, 83, 100));
-                        
-                    }
-                   
+                        if (draw_radar)
+                            ESP::RenderRadar(mem, ctx.snapshot, ctx.drawList);
 
-                    if (draw_radar)
-                        ESP::RenderRadar(mem, ctx.snapshot, ctx.drawList);
-
-                    if (enableAimbot)
-                    {
-                        
-                        DMA.AddTask(Aimbot::Run);
-                    }
-
-                    if (perWeaponConfig) {
-                       WeaponConfigOverlay();
-                    }
-
-                        
-
-                    if (memwrite)
-                    {
-                        if (camera_hacks)
-                            DMA.AddTask(SetCameraPerspective, selectedPerspective, camOffset);
-                        else
-
-                            DMA.StopTask(typeid(SetCameraPerspective).name());
-
-                        if (super_kill)
-                            DMA.AddTask(SuperKill, mem);
-                        else
-                            DMA.StopTask(typeid(SuperKill).name());
-                        if(fast_knives)
-                       
-                            DMA.AddTask(ShootThroughWall,mem);
-                    else
-                        DMA.StopTask(typeid(ShootThroughWall).name());
+                        if (perWeaponConfig) {
+                            WeaponConfigOverlay();
+                        }
 
                     }
+
+                    if (showFPS)
+                        ShowFPS(ctx.drawList);
                   
                 }
-                
 
-                if (showFPS)
-                    ShowFPS(ctx.drawList);
+                MainThread::imgui_menu(overlay.hwnd);
+
+                ImGui::EndFrame();
+                ImGui::Render();
+
+                const float clear_color_with_alpha[4] = { 0.0, 0.0, 0.0, 0.0 };
+                g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView,
+                    nullptr);
+                g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView,
+                    clear_color_with_alpha);
+                ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
+                g_pSwapChain->Present(vsync == 1 ? 1 : 0, 0);
             }
-
-            // Manual refresh
-            if (manual_refresh)
-                std::thread([] { Memory::full_refresh(); }).detach();
-
-            // ImGui menu
-            
-            MainThread::imgui_menu(overlay.hwnd);
-
-
-            ImGui::EndFrame();
-            ImGui::Render();
-
-            const float clear_color_with_alpha[4] = { 0.0, 0.0, 0.0, 0.0 };
-            g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView,
-                nullptr);
-            g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView,
-                clear_color_with_alpha);
-            ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-
-            g_pSwapChain->Present(1, 0);
+            catch (const std::exception& e) {
+                Logger::Error(std::string("Exception in Render_Loop frame: ") + e.what());
+            }
+            catch (...) {
+                Logger::Error("Unknown exception in Render_Loop frame; continuing");
+            }
         }
 
         ImGui_ImplDX11_Shutdown();
@@ -169,7 +139,7 @@ bool CreateDeviceD3D(HWND hWnd)
     sd.BufferDesc.Width = 0;
     sd.BufferDesc.Height = 0;
     sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    sd.BufferDesc.RefreshRate.Numerator = 144;
+    sd.BufferDesc.RefreshRate.Numerator = 165;
     sd.BufferDesc.RefreshRate.Denominator = 1;
     sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
     sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;

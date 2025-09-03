@@ -24,7 +24,7 @@ void refreshMemory()
 
 int main()
 {
-	VerifyLogin();
+	//VerifyLogin();
     if (std::strcmp(kRegionVersion, "china") == 0) LOADER_TITLE += "CN";
     else if (std::strcmp(kRegionVersion, "NA") == 0) LOADER_TITLE += "NA";
     SetConsoleTitleA(LOADER_TITLE.c_str());

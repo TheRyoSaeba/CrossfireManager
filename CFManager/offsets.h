@@ -130,7 +130,7 @@ inline bool PopulateOffsets() {
     }
 
     const auto scan_in_range = [&](const char* name, const auto& pattern, uintptr_t base, size_t size) {
-        LogScan(name, base, size);
+       // LogScan(name, base, size);
         auto result = mem.FindSignature(pattern, base, base + size);
         return result;
         };
@@ -146,16 +146,16 @@ inline bool PopulateOffsets() {
     }
     const auto read_offset = [&](const char* name, auto addr) {
         auto val = mem.Read<int32_t>(addr + 3);
-        LogHex(name, val);
+       // LogHex(name, val);
         return val;
         };
 
     offs::LT_SHELL = first + 7 + read_offset("LT_OFFSET", first);
     offs::ILTDrawPrim = fourth + 7 + read_offset("DRAWPRIM_OFFSET", fourth);
     LOG_INFO("Final offsets:");
-    LogHex("LT_SHELL", offs::LT_SHELL);
-    LogHex("ILTDrawPrim", offs::ILTDrawPrim);
-    LogHex("ENTITY_START", ENTITY_START);
+  //  LogHex("LT_SHELL", offs::LT_SHELL);
+  //  LogHex("ILTDrawPrim", offs::ILTDrawPrim);
+ //   LogHex("ENTITY_START", ENTITY_START);
     if (offs::LT_SHELL > (CFSHELL + cshell_size)) {
         LOG_ERROR("Invalid LT_SHELL outside module range");
         return false;

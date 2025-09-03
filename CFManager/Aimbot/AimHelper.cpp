@@ -61,7 +61,8 @@ void outlined_text(const ImVec2& pos, ImU32 color, const char* text) {
 }
 
  
- 
+// if these two aimbots are odd snd funky that's  because idk how to make an aimbot so i gsve up and asked a chatbot for help lmao
+//sorry 
 
 void MoveCursor(float targetX, float targetY, LTClientShell _shell)
 {

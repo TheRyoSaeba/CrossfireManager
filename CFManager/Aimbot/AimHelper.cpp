@@ -75,7 +75,7 @@ void MoveCursor(float targetX, float targetY, LTClientShell _shell)
 
     float mag = std::sqrt(dx * dx + dy * dy) + 1e-6f;
     float norm = std::min(mag / 200.f, 1.f);
-    float baseSmooth = std::clamp(smoothing * 3.0f, 1.f, 15.f);
+    float baseSmooth = std::clamp(smoothing * 3.0f, 1.f, 18.f);
     float jitter = ((rand() % 101) - 50) / 1000.f;
     float useSmooth = std::max(1.f, baseSmooth + jitter + norm * 2.0f);
 

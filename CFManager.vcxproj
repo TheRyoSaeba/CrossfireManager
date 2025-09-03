@@ -168,7 +168,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CFManager\Aimbot\AimHelper.cpp" />
-    <ClCompile Include="CFManager\Authentication\Auth.cpp" />
     <ClCompile Include="CFManager\CFManager.cpp" />
     <ClCompile Include="CFManager\Config\config.cpp" />
     <ClCompile Include="CFManager\Config\globals.cpp" />
@@ -288,6 +287,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
+    <None Include="README.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

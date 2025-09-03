@@ -73,12 +73,12 @@ ________:00007FF855806953                 call    qword ptr [rax+20h]
      
     constexpr auto LT_PATTERN =
 
-        "";
+        " ";
 
 
      
     constexpr auto DRAWPRIM_PATTERN =
-        "";
+        " ";
 
 
     /*

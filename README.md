@@ -1,7 +1,7 @@
 [![Discord](https://github.com/user-attachments/assets/4417118b-ea28-4527-b553-6016630e2cc7)](https://discordapp.com/users/makimura.dev)
  
- Offsets have changed, just update and good to go or [Makimura.dev] .
-
+ Offsets have changed, just update, but if  you can't go to. [Makimura.dev](https://www.makimura.dev/) .
+ 
 
 ## Features
 - Visuals
